@@ -1,0 +1,25 @@
+# Why I left Medium
+
+I published 47 posts on Medium over three years. Total earnings: twelve euros and eighty-three cents.
+
+But the money was never the point. The point was the deal: I write, you host, readers read. Simple. Except Medium kept changing the deal. First came the paywall. Then the algorithmic feed. Then the "you might also like" carousel that turned every article into a slot machine for attention.
+
+The final straw was when I noticed my own reading behavior. I wasn't finishing articles anymore. I was skimming headlines, opening twelve tabs, reading the first paragraph of each, then closing them all. The platform had trained me to consume, not to read.
+
+So I left. My posts now live here. They load in eight milliseconds. They have zero ads. They will exist as long as I keep a directory on a server.
+
+Which is to say: they are mine again.
+
+---
+
+The modern web has a word for what Medium does. They call it "engagement." But engagement is just attention with a business model attached. And when your business model depends on capturing attention, you are incentivized to capture more of it. Always more.
+
+Burrow has no engagement metrics. There is no algorithm deciding what you see. There are no notifications pulling you back. You come here because you chose to come here. You leave when you're done.
+
+It feels like the internet I remember from 2005. Before everything became a funnel.
+
+> "The web wasn't supposed to be a few big silos of content that everyone visits. It was supposed to be a medium where everyone could create."
+
+If you're reading this on the HTTPS gateway: this is what Burrow looks like. Clean, fast, and focused on the words. No sidebar with trending articles. No pop-up asking you to subscribe. Just text on a screen.
+
+That used to be the default. It should be again.

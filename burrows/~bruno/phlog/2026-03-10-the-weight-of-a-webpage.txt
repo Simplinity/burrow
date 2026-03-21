@@ -1,0 +1,21 @@
+# The weight of a webpage
+
+I weighed a webpage today. Not metaphorically. I opened a news article and measured what my browser actually downloaded to show me 800 words about local traffic.
+
+2.4 megabytes.
+
+Let me break that down. The article text itself, in plain UTF-8, was about 4 kilobytes. The other 2,396 kilobytes were: analytics scripts, ad network libraries, consent management platforms, social media widgets, web fonts, hero images, lazy-loaded images, tracking pixels, and something called "engagement optimization."
+
+The ratio of content to overhead was 1:600. For every byte of journalism, my browser downloaded 600 bytes of surveillance infrastructure.
+
+This is not a technical problem. The technology to serve a fast, light, beautiful webpage has existed since 1995. This is a business model problem. When your revenue comes from advertising, every page view must be maximized.
+
+---
+
+Here is what that same article would look like on Burrow:
+
+  4 KB of text. Served over TLS. Rendered in Literata at 17px.
+  Total transfer: 4 KB. Total load time: 14ms.
+  Trackers: 0. Ads: 0. Consent banners: 0.
+
+I am not saying Burrow will replace the news. But maybe the next time someone has 800 words to share with the world, they should not need 2.4 megabytes of infrastructure to do it.

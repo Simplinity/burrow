@@ -1,0 +1,17 @@
+# On digital minimalism
+
+People keep asking me what apps I use. They expect a list. They want the productivity stack, the note-taking workflow, the task management system.
+
+My answer disappoints them: I use a text editor and a file system.
+
+Every app is a set of opinions about how you should work, wrapped in a subscription fee. Every app wants to be the center of your digital life. Every app sends notifications.
+
+I don't want opinions. I want a blank page.
+
+---
+
+Burrow is the first platform I've used in years that doesn't try to tell me what to do. It gives me a directory and says: put things in it.
+
+No templates. No getting started wizard. No AI writing assistant. Just an empty folder with my name on it.
+
+The emptiness is not a bug. It is the feature.

@@ -1,0 +1,5 @@
+# Revend
+
+An ITAD platform for the circular economy. We handle the entire lifecycle of returned and end-of-life electronics — from intake and testing to data erasure, refurbishment, and resale.
+
+B2B SaaS. Built with a small team. Growing steadily.

@@ -1,0 +1,49 @@
+# Finding Things Worth Reading
+
+The modern internet has a discovery problem. Algorithms show you what keeps you scrolling, not what's worth reading. Search engines optimize for SEO, not quality. Social media amplifies outrage, not insight.
+
+Burrow has four discovery mechanisms. None of them involve an algorithm.
+
+---
+
+Rings.
+
+A webring is a curated loop of burrows — a navigable circle of related voices. Someone you trust says "these writers belong together" and links them in a ring. When you're reading a post from a ring member, arrows appear at the bottom:
+
+  ← Previous · Deep Web Craft · Next →
+
+Click through and you're in someone else's burrow. It's channel surfing for thoughtful writing. The ring was created by a human, not a model. The curation is personal, opinionated, imperfect. That's why it works.
+
+Rings span servers. A ring can link /~bruno on your local server and gph://tilde.town/~river on another. Rings are how Burrow federates socially — not through a protocol spec, but through human curation.
+
+---
+
+Bookmarks.
+
+Burrow has one social signal: public bookmarks. When you bookmark a page, it appears at /~you/bookmarks. Your bookmarks are your taste, on display.
+
+Bookmark counts are aggregated on the Discover page as "Most bookmarked." This is the only ranking signal in Burrow. No likes. No views. Just: how many people thought this was worth saving.
+
+Importantly: the author never sees a number on their page. There's no "142 bookmarks!" badge. The count only affects search ranking and the Discover page. This prevents the dopamine loop of writing-for-likes. You write because you have something to say, not because you're chasing a number.
+
+---
+
+Search.
+
+Veronica-NG is a full-text search engine built into burrowd. Named after Gopher's original search engine (Very Easy Rodent-Oriented Net-wide Index to Computerized Archives — the '90s were wild).
+
+No external service. No Elasticsearch cluster. No 4 GB Java heap. Just an in-memory inverted index built from your filesystem on startup. Results ranked by BM25 with a freshness boost. Same query, same results, for everyone. No personalization. No filter bubble.
+
+Servers can export their index as JSON at /search/index.json. Other servers import it for cross-server search. Federation by URL. The simplest model that could possibly work.
+
+---
+
+The firehose.
+
+Every post, every burrow, reverse chronological order. Unranked. Unfiltered. Intentionally overwhelming. It's not meant to be read cover-to-cover. It's meant to be glanced at — to sense the weather. "A lot of people are writing about Rust today." "There's a cluster of climate posts."
+
+The firehose is the anti-algorithm. And the random burrow link on the Discover page is StumbleUpon for plaintext — a different hole on every page load.
+
+---
+
+/~burrow/concepts/07-design   How it looks (and why) →

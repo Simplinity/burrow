@@ -1,0 +1,38 @@
+# Where This Is Going
+
+If Burrow succeeds, five years from now:
+
+Half a million people have burrows across hundreds of servers. Writers, researchers, and thinkers use it as their primary publishing platform. Veronica-NG is the first place people search when they want thoughtful writing instead of SEO-optimized AI slop.
+
+The Burrow protocol is documented, stable, and has multiple independent implementations. The HTTPS gateway means Burrow content ranks in Google — and ranks well, because it loads fast, it's accessible, and it's human-written.
+
+The company is profitable, small, and has never taken venture capital.
+
+---
+
+What's coming next.
+
+The Tauri desktop client. A native window that speaks gph://, renders in Literata, and makes the keyboard feel like a superpower. Under 8 MB. Starts in under a second.
+
+The mobile reader. iOS and Android. Reading, bookmarking, discovering. No publishing — that's deliberate.
+
+Reading challenges. Community goals tracked locally. No leaderboards, no gamification. Just a personal counter and the satisfaction of reaching a goal you set for yourself.
+
+Custom domains. Your burrow at your domain. gph://yourname.com.
+
+The landing page. burrow.sh — the manifesto, the waitlist, the first impression. Just text. Fast. Beautiful. The product as its own advertisement.
+
+---
+
+The biggest risk isn't technical. It's cultural.
+
+Burrow has to be cool enough for early adopters but useful enough for everyone else. Punk but not pretentious. Minimal but not austere. Nostalgic but not backwards.
+
+The answer is in the name. A burrow is small, warm, and yours. That's always been the promise of the personal internet. We just forgot, for a while, what it felt like.
+
+---
+
+Now go write something.
+
+/~burrow/concepts/01-manifesto   Back to the beginning →
+/~burrow/server/01-getting-started   Start running a server →

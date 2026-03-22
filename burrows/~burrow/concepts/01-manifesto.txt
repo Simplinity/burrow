@@ -1,0 +1,27 @@
+# The Manifesto
+
+The average web page in 2026 weighs 2.8 MB. It loads 47 trackers, 12 ad networks, and a consent banner more complex than the content you came for. You scroll through AI-generated slop to find a recipe buried under someone's life story, seventeen affiliate links, and a video that autoplays at full volume.
+
+We forgot what the internet was for.
+
+---
+
+In 1991, the University of Minnesota built a protocol called Gopher. It was so simple it fit on a napkin. No fonts. No layout. No JavaScript. Just directories and text. You asked for something, you got it. The entire transaction took milliseconds. The entire experience took your full attention — because there was nothing else competing for it.
+
+Gopher died because the web was more capable. Fair enough.
+
+But "more capable" metastasized into "more extractive." The web didn't just add images and layout — it added surveillance capitalism, infinite scroll, engagement algorithms, dark patterns, and a business model that treats your attention as a commodity to be strip-mined.
+
+---
+
+Burrow is not a time machine. We're not LARPing the '90s.
+
+We're taking the philosophy of Gopher — text-first, zero-bloat, human-speed, user-owned — and building it for people who are tired of the modern web but don't want to give up modern UX.
+
+This is the internet you'd build if you started over today, knowing everything we know about what went wrong.
+
+Burrow is a hole in the ground. It's small, it's warm, and it's yours.
+
+---
+
+/~burrow/concepts/02-identity   What's in a name →

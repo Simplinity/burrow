@@ -1,16 +1,25 @@
-# About Burrow
+# The Burrow Manual
 
-The internet is bloated. We dug a way out.
+Welcome. You're reading a manual that lives inside the system it documents.
 
-Burrow is a plaintext content server inspired by Gopher, built for people who think the web peaked around 1997 but couldn't quite admit it until now.
-
-It serves your words over HTTP, HTTPS, and Gemini. It renders them in beautiful typography. It refuses to execute JavaScript. (One scroll handler got through. It's on probation.)
-
-Every burrow lives in a ~username/ directory, because tildes were the original social network and we will die on this hill.
+This is not an accident. Burrow is a plaintext publishing system, and the best way to explain a plaintext publishing system is to publish plaintext about it. If that feels circular, good. You're paying attention.
 
 ---
 
-This burrow is the manual. Each page covers one feature. Read them in order or wander. That's what burrows are for.
+The manual is split into two sections:
 
-/~burrow/manual   Read the manual
+/~burrow/concepts/   The Big Picture
+Why Burrow exists. What it believes. How it thinks about the internet, identity, publishing, and the deliberate absence of features you've been trained to expect. Start here if you've never heard of Burrow, or if you have but aren't sure why anyone would voluntarily give up bold text.
+
+/~burrow/server/   Running the Server
+Everything about burrowd: configuration, TLS, Gemini, deployment, the CLI, and a troubleshooting section written by someone who has clearly been hurt by port conflicts before. Start here if you want to self-host.
+
+---
+
+Burrow is built with Rust, served over HTTP, HTTPS, and Gemini simultaneously, and contains exactly one scroll event listener that is on permanent probation.
+
+The fonts do more heavy lifting than the backend. We're at peace with that.
+
+Now go read something. Or better yet, go write something.
+
 → https://github.com/Simplinity/burrow   Source code

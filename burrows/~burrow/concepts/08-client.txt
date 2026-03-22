@@ -1,0 +1,74 @@
+# The Apps (Coming Soon)
+
+Right now, you're reading Burrow through the HTTPS gateway — the server wraps your text in minimal HTML and serves it to your browser. It looks great. It works in every browser. It's fast.
+
+But it's not the real experience.
+
+---
+
+The desktop client.
+
+Built with Tauri — Rust backend, web frontend, under 8 MB total. For comparison, Slack is 300 MB and it just shows you messages.
+
+The client speaks gph:// natively. No HTML wrapping. No browser overhead. Just the protocol, the renderer, and your keyboard.
+
+Navigation is keyboard-first:
+
+  Space        Scroll down
+  Shift+Space  Scroll up
+  Esc          Go up one directory
+  Enter        Follow link
+  b            Toggle bookmarks panel
+  s            Open search
+  /            Quick-navigate (type a path)
+  [ / ]        Previous / next item in directory
+  g            Go to address
+
+Mouse and touch work fine. But the keyboard shortcuts make Burrow feel like a power tool, not a consumption app.
+
+The client includes a built-in editor. Deliberately minimal:
+
+  Monospace font (JetBrains Mono)
+  No formatting toolbar
+  No preview pane — what you write is what gets published
+  Character count in the corner
+  Auto-save every 30 seconds
+  Cmd+Enter to publish
+
+The editor has one power feature: link completion. Type /~ or → and it suggests from your bookmarks and recent visits. Cross-linking between burrows becomes effortless.
+
+---
+
+The mobile app.
+
+iOS and Android. Reader-first. No publishing from mobile.
+
+This is a design statement: we don't want you micro-blogging from the toilet. Write something that's worth writing. Sit down. Think about it. Use a keyboard. Publishing is a deliberate act.
+
+Mobile is for reading, bookmarking, and discovering. The app is fast, offline-capable, and treats your phone as what it should be: a reading device, not a content extraction machine.
+
+---
+
+There is no web app.
+
+The HTTPS gateway is read-only. If you want to participate — publish, bookmark, join rings — you use the native client or the CLI. This is intentional friction. It filters for people who care enough to install something.
+
+The web showed us what happens when publishing has zero friction: you get a billion posts a day and most of them are noise. Burrow's mild friction is a quality filter. Not a gate — anyone can install the client. But a speed bump that says: are you sure you have something to say?
+
+---
+
+The CLI.
+
+For people who think graphical interfaces are a crutch:
+
+  burrow init my-burrow
+  burrow new "Why I Left Medium"
+  burrow push
+  burrow search "rust async" --all
+  burrow bookmark add /~maya/phlog/good-post
+
+The CLI is already built and shipping. It's the power-user path. Everything the server does, the CLI controls.
+
+---
+
+/~burrow/concepts/09-federation   How servers talk to each other →

@@ -1,0 +1,64 @@
+# How Servers Talk to Each Other
+
+Burrow servers are independent but interconnected. There's no central server. No federation protocol. No ActivityPub. No PhD in distributed systems required.
+
+Instead, there are four simple mechanisms. Each one is embarrassingly obvious.
+
+---
+
+Links.
+
+The most ancient form of federation. You write gph://other.server/~alice/post in your phlog. Someone reads your post and clicks the link. They're now on another server. That's it. That's federation.
+
+Every URL is a bridge. Every hyperlink is an act of federation. Tim Berners-Lee figured this out in 1989. We just stopped overcomplicating it.
+
+---
+
+Pings.
+
+When your post links to a page on another server, burrowd sends a lightweight HTTP POST to the target:
+
+  POST /ping
+  source=gph://your.server/~you/post
+  target=/~alice/response
+
+The target server stores the ping. Alice's post now shows "Mentioned by ~you" at the bottom. It's like Webmention, but without the W3C spec, the verification dance, or the existential crisis about whether ActivityPub is better.
+
+Just: "hey, someone linked to your post." That's it.
+
+---
+
+Search index.
+
+Every server exports its content index at /search/index.json — a simple JSON document listing all public posts with titles, authors, dates, and word counts. Other servers can import it for cross-server search.
+
+No crawling. No scraping. No robots.txt negotiations. Just a file at a URL. If you want to be found, you serve the index. If you don't, you don't. Consent by default.
+
+---
+
+Rings.
+
+A ring file can contain remote addresses:
+
+  /~bruno
+  /~maya
+  gph://tilde.town/~river
+  gph://circumlunar.space/~fox
+
+When someone navigates the ring, they hop between servers. The ring is a social bridge — curated by a human, not negotiated by a protocol.
+
+---
+
+What's missing (on purpose).
+
+No identity federation. Your ~name on one server is not your ~name on another. If you want the same name everywhere, register it everywhere. Like email.
+
+No content replication. Your files live on your server. There's no "sync to the network." If your server goes down, your content goes down. Host it somewhere reliable, or keep backups. Like email.
+
+No global namespace. There's no phlogosphere.net/registry where you claim a unique name. Uniqueness is per-server. Collisions are possible. That's fine. The internet survived decades of multiple "john@" addresses on different mail servers.
+
+This model is simple, robust, and impossible to capture. No single entity can own the namespace, control the search, or shut down the network. It's just servers, serving files, at URLs. The architecture of the original web, before we forgot how good it was.
+
+---
+
+/~burrow/concepts/10-business   How this stays alive →

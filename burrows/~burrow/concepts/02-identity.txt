@@ -1,0 +1,35 @@
+# Identity Is a Path
+
+Your Burrow address is gph://server/~yourname. That's it. That's your identity.
+
+The tilde is a direct homage to Unix home directories and the tilde clubs of the early web — sdf.org/~user, tilde.town/~artist. It signals: this is a person's space, not a product page. Not a profile. Not an account. A place.
+
+---
+
+Your burrow address carries two pieces of information:
+
+  gph://phlogosphere.net/~bruno
+         ^                 ^
+         the community     you
+
+This is like email. bruno@gmail.com and bruno@proton.me are different contexts, different communities, same person. You can have burrows on multiple servers. You can self-host. The protocol doesn't care who you are — only where your files are.
+
+---
+
+There is no separate "profile page." Your root directory is your profile. Want to tell people about yourself? Create an about.txt. Want to share your reading list? Create a links.gph. Want to publish a blog? Create a phlog/ directory.
+
+Your identity is not a form you filled in. It's the sum of what you chose to publish. The filesystem is the biography.
+
+---
+
+And migration? Your burrow is a directory of files. To move:
+
+  1. Download your directory (burrow pull)
+  2. Upload to new server (burrow push)
+  3. Done.
+
+No export tool. No "Download Your Data" button that gives you a useless JSON blob. No API migration guide. It's files. You copy them. Like moving apartments — you pack your boxes and carry them next door.
+
+---
+
+/~burrow/concepts/03-protocol   The protocol that fits on a napkin →

@@ -1,0 +1,48 @@
+# The Protocol That Fits on a Napkin
+
+Burrow speaks three languages. Each one is simpler than the last.
+
+---
+
+HTTPS — the gateway to the normal world.
+
+Visit any burrow in your browser. The server wraps your text in minimal HTML — Literata serif at 17px, comfortable line-height, zero JavaScript (except one scroll handler that is on probation). Share the link on Twitter. People read it instantly. They don't need to understand anything. They just see clean, fast text that loads in 50ms.
+
+At the bottom of every gateway page:
+
+  This page lives on Burrow. Claim your own hole.
+
+That's the entire conversion funnel.
+
+---
+
+Gemini — the bridge to the small web.
+
+Burrow also speaks Gemini, the minimalist protocol from 2019 that makes Gopher look bloated. Add a gemini_port to your config and burrowd serves your content over Gemini too. Same content, different wire format. Your .gph files are auto-converted to Gemtext. Gemini users see your burrow natively in their clients. You didn't have to do anything.
+
+---
+
+gph:// — the native tongue.
+
+The Burrow protocol is what you get when you strip everything to the bone. A request is one line:
+
+  gph://phlogosphere.net/~bruno/about\r\n
+
+The server responds with a typed document. Six document types:
+
+  /   Directory — a list of items
+  ¶   Text — a plain UTF-8 document
+  →   Link — a redirect
+  ?   Search — an input prompt
+  ◊   Gemtext — cross-protocol compatibility
+  ∅   Binary — raw file download
+
+That's it. Six types. Gopher had nine. HTTP has... don't ask.
+
+The native protocol exists for the desktop and mobile clients. It's lighter than HTTP, more expressive than Gopher, and the client controls the rendering. Your burrow, your fonts, your colors, your keyboard shortcuts.
+
+No client yet? No problem. The HTTPS gateway serves everyone. The native protocol is a promise for later — when there's a Tauri desktop app to speak it.
+
+---
+
+/~burrow/concepts/04-markup   Writing in .gph →

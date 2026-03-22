@@ -1,0 +1,69 @@
+# How It Looks (and Why)
+
+Burrow's strongest design move is having almost no design. In a world of hyper-designed startups with custom illustration systems, mascots, and brand guidelines longer than novels — Burrow's visual identity is defined by absence.
+
+---
+
+Typography.
+
+Two fonts. Forever.
+
+JetBrains Mono — for everything structural. Navigation, addresses, file names, metadata, directory listings. This is the surface of Burrow. It says: this is a tool, not a magazine.
+
+Literata — for reading. When you open a text file, the content renders in Literata. Warm, highly legible serif. It says: someone wrote this, and it deserves your attention.
+
+No other fonts. No font-size buffet. Three sizes: 14px for UI, 17px for reading, 13px for metadata. That's the entire type scale.
+
+---
+
+Color.
+
+The entire UI is built from five values:
+
+  surface:    almost-white background
+  text:       almost-black text
+  muted:      secondary text, borders
+  faint:      subtle backgrounds
+  accent:     teal — links, one interactive element
+
+Dark mode inverts surface and text. The accent stays. That's the whole theme engine.
+
+Why no brand color? Because brand colors are marketing. They exist to make you feel something about a company. Burrow isn't trying to make you feel anything about Burrow. It's trying to get out of the way so you feel something about the content.
+
+Burrow owners can set a custom accent color in their .burrow config. Your burrow, your tint. Everything else stays neutral.
+
+---
+
+Icons.
+
+Burrow uses zero icons. Every affordance is communicated through:
+
+Text labels — Publish, Search, Settings
+Punctuation as symbols — / for directory, → for link, ? for search, ★ for bookmark
+Spatial relationships — indentation is hierarchy, position is priority
+
+Why? Because icons are ambiguous. What does a hamburger menu mean? What does a gear icon do? What's the difference between a share icon and an export icon? Text is never ambiguous. Text is Gopher's first principle.
+
+---
+
+The reading experience.
+
+When you open a text file, the UI disappears. No sidebar. No toolbar. Just text, rendered in Literata at 17px, with comfortable 1.7 line-height and a max width of 65 characters.
+
+The background is warm off-white, not harsh white. The text is soft almost-black, not pure black. The effect is subtle but visceral: it feels like paper, not a screen.
+
+A thin 2px line at the top fills as you scroll. When you reach the end, it pulses once and fades. That's the only UI element visible while reading.
+
+Below the title, a ghost line appears for three seconds: ~4 min read. Then it fades. You know what you're committing to, but the information doesn't linger and compete with the words.
+
+---
+
+The anti-brand.
+
+No mascot. No illustrations. No stock photography. No hero images. No logo animation. No brand video. No swag. (Okay, maybe one t-shirt: plain black, white monospace text: gph://~you.)
+
+If you use Burrow for a week and someone asks what it looks like, the answer should be: "I don't remember what it looks like. I remember what I read."
+
+---
+
+/~burrow/concepts/08-client   The apps (coming soon) →

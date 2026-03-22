@@ -1,0 +1,43 @@
+# How This Stays Alive
+
+Burrow makes money from hosting. That's it. Not advertising. Not data. Not "premium" features that gatekeep the experience.
+
+---
+
+Free tier.
+
+One burrow. Full publishing, reading, bookmarking, rings, search, guestbooks, feeds. Everything. The free tier is the real product. It's not a trial. It's not a teaser. It's Burrow.
+
+The only constraint: storage. A free burrow has limited space. Enough for years of writing. Not enough for a media archive. Constraints breed creativity, and a 1 MB text burrow costs us less than a cent per month to host.
+
+---
+
+Paid tiers.
+
+Tunnel — more storage, custom domain support, email-to-burrow publishing, basic analytics (just page load counts — no visitor data, no referrers, no geography, no devices).
+
+Cavern — even more storage, binary file hosting (images, PDFs), multiple burrows, API access.
+
+The paid tiers add capacity, not capability. A free user and a paid user have the same features. The only difference is how much space they get and a few convenience tools. Nobody is locked out of bookmarks, rings, search, or the social layer.
+
+---
+
+Self-hosted — free, forever.
+
+Run your own server. Zero cost to us. We provide the software, documentation, and Docker images. We don't want to lock you in.
+
+If Burrow-the-company disappears tomorrow, Burrow-the-software continues. The server is open source. The protocol is documented. Your files are on your disk. That's the exit strategy: there is no lock-in to exit from.
+
+---
+
+Why this works.
+
+A text burrow costs almost nothing to serve. The protocol is tiny. The files are small. The infrastructure is cheap. A single Hetzner VPS at fifteen dollars a month can host thousands of burrows.
+
+The goal isn't unicorn scale. It's sustainability. Burrow should make enough money to keep the lights on and the team paid, while never being tempted to compromise on the "no ads, no tracking, no algorithmic manipulation" promise.
+
+No venture capital. No growth-at-all-costs. No pivot to enterprise. Just a small, honest service for people who want to publish text on the internet without the internet getting in the way.
+
+---
+
+/~burrow/concepts/11-future   Where this is going →

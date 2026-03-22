@@ -1,0 +1,60 @@
+# Writing in .gph
+
+Burrow Markup is a formatting system so minimal it barely qualifies as markup. We call it "gph" because naming things is the second hardest problem in computer science, right after cache invalidation and off-by-one errors.
+
+---
+
+Here's the entire specification:
+
+  # Heading
+  Start a line with "# " and it becomes a heading. We only
+  support one level because heading hierarchies are a slippery
+  slope to PowerPoint.
+
+  Regular paragraphs
+  Just write. Like a person. With words. No bold. No italic.
+  If your words need formatting to be understood, rewrite them.
+
+  > Blockquotes
+  > For when someone else said it better.
+
+  ---
+  Horizontal rules. For dramatic pauses.
+  Use sparingly, like hot sauce and semicolons.
+
+    Code blocks
+    Indent with two spaces. No syntax highlighting.
+    Your code should speak for itself.
+    (If it can't, that's a code review issue, not a rendering issue.)
+
+  → https://example.com
+  External links. The arrow is not optional.
+
+  /~alice/about   Internal links
+  Three spaces separate the path from the description.
+
+---
+
+What's deliberately missing:
+
+No bold or italic — because emphasis should come from sentence structure, not decoration. If you can't make a point without bold text, the problem isn't the formatting.
+
+No inline links — because links deserve their own line and your full attention. A link in the middle of a sentence is an invitation to leave before you've finished reading. That's rude.
+
+No images — because images are binary content, served separately, loaded intentionally. This isn't a magazine layout. It's text.
+
+No tables — because if you need a table, you need a spreadsheet.
+
+No heading hierarchy — because if your document needs six levels of headings, it needs to be six documents.
+
+No custom colors or fonts — because your content isn't your brand.
+
+No metadata or frontmatter — because the filesystem is the metadata. The filename is the slug. The first line is the title. The modification date is the date. YAML headers are a tax on every document for the benefit of build tools. We don't have build tools.
+
+---
+
+The result: any .gph file is perfectly readable in any text editor, on any system, forever. In fifty years, when Markdown has been replaced by whatever comes next, your words will still be exactly where you left them. Plain text is the only truly durable format.
+
+---
+
+/~burrow/concepts/05-social   The philosophy of less →

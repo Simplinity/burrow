@@ -1,0 +1,57 @@
+# The Philosophy of Less
+
+Burrow deliberately lacks most of the features you expect from a social platform. This is not laziness. This is the design.
+
+---
+
+No followers, no following.
+
+You don't follow people. You bookmark their pages. If you want to know when they publish something new, subscribe to their RSS or Atom feed. The difference: following is a social contract. Subscribing is a personal choice. Nobody knows you're subscribed. Nobody gets a dopamine hit from your follow count.
+
+---
+
+No likes. No reactions.
+
+No hearts, no thumbs-up, no fire emoji. If you appreciate something, you have two options: bookmark it (public curation) or write a response on your own phlog and link to the original (public conversation).
+
+Both require effort. That's the point. A like costs nothing and means nothing. A bookmark says "I want to find this again." A written response says "this made me think." The bar is higher. The signal is clearer.
+
+---
+
+No comments.
+
+There is no comment section. If you have something to say about someone's writing, write about it on your own burrow and link back. This forces you to create something of your own rather than firing off a two-word reaction.
+
+It raises the bar for discourse. If your response isn't worth its own page, maybe it's not worth saying. The guestbook exists for brief notes — "nice post" is a guestbook entry, not a conversation.
+
+---
+
+No resharing. No reposting.
+
+You can't reshare someone's post. You can link to it from your burrow. The difference: a link says "go read this." A reshare says "look at me for finding this." Burrow is about the content, not the curator.
+
+---
+
+No notifications.
+
+Burrow has no notification system. No bell icon. No badge count. No "you have 12 unread." You open Burrow when you want to. You close it when you're done. It never reaches out to pull you back in. Ever.
+
+The modern internet treats your attention as a resource to be extracted. Burrow treats it as something that belongs to you.
+
+---
+
+No DMs. No chat.
+
+Burrow is not a communication tool. It's a publishing tool. If you want to talk to someone, use email. There's probably a contact.txt in their burrow with their email address.
+
+---
+
+What remains after stripping all this away?
+
+A reading and writing tool. You publish things. You read things. You bookmark the good things. The social dynamics emerge from the content, not from engagement features.
+
+That's what the internet was before we complicated it.
+
+---
+
+/~burrow/concepts/06-discovery   Finding things worth reading →

@@ -1,0 +1,40 @@
+# Mentions & Federation
+
+When you link to someone's post, they know. When someone on another server links to yours, you know too.
+
+---
+
+Burrow-to-burrow mentions work automatically. When a post on your server contains an internal link like /~alice/phlog/her-post, Alice's post will show a "Mentioned by" section at the bottom:
+
+  ← Mentioned by · 2 posts
+    Why I left Medium (~bruno)
+    https://other.server/~kai/response (remote)
+
+This is the Burrow equivalent of trackbacks, webmentions, and "@" replies — without the W3C spec, the verification dance, or the existential crisis about whether ActivityPub is better.
+
+---
+
+How local mentions work: when a page is requested, burrowd scans all phlog posts on the server for links to that page. No database. No index. Just grep, essentially. It's fast because text files are small and SSDs are fast.
+
+How federation works: other Burrow servers can POST to /ping when their users link to your content:
+
+  POST /ping
+  source=https://other.server/~kai/response
+  target=/~alice/phlog/her-post
+
+The ping is stored in burrows/.pings and merged with local mentions at render time. Simple. Stateless. No handshake. No verification.
+
+---
+
+Outgoing pings: when burrowd starts, it scans all posts for gph:// links and sends HTTP POST pings to the target servers. Already-sent pings are tracked in burrows/.pings-sent to avoid sending duplicates.
+
+This means: write a post, link to someone on another server with a gph:// URL, restart burrowd, and their server gets a notification. The conversation is public, distributed, and nobody owns it.
+
+---
+
+The entire federation model is "federation by URL." Servers don't need to know about each other. They just serve content at addresses. Links connect them. Pings notify them. Search indexes them. That's it.
+
+No ActivityPub. No Mastodon compatibility layer. No protocol negotiation. Just HTTP POST with two form fields. If that's not simple enough, we'll accept carrier pigeons.
+
+/~burrow/manual/09-discover   ← Discover & Firehose
+/~burrow/manual/11-gallery   Next: Gallery →

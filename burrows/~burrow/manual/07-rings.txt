@@ -1,0 +1,55 @@
+# Rings
+
+Webrings are back. Not ironically. Well, maybe a little ironically. But also sincerely.
+
+---
+
+A ring is a curated loop of burrows. A navigable circle of related voices, maintained by a person who thought these writers belonged together. Like a blogroll on steroids. Like a mixtape, but for websites.
+
+When you're reading a page from a ring member's burrow, navigation appears at the bottom:
+
+  ← Previous · ◎ Deep Web Craft · Next →
+
+Click through and you're visiting the next burrow in the ring. It's like channel surfing, but for thoughtful writing. Each page is a different voice, but someone thought they belonged together.
+
+---
+
+Creating a ring:
+
+  burrow ring create "Deep Web Craft" -d "Writers who care about the web"
+  burrow ring add deep-web-craft /~maya
+  burrow ring add deep-web-craft gph://tilde.town/~river
+
+Ring files live in ~/rings/ as .ring files:
+
+  title = Deep Web Craft
+  description = Writers who care about the web as a medium
+  /~bruno
+  /~maya
+  gph://tilde.town/~river
+
+Members can be local (/~user) or remote (gph://host/~user). Rings span servers. That's federation without a protocol spec, an ActivityPub implementation, or a PhD in distributed systems.
+
+---
+
+Rings can be nested. A ring can include another ring as a member:
+
+  title = Indie Web
+  /~bruno
+  ring:~bruno/deep-web-craft
+  gph://indieweb.org/~alice
+
+The ring: reference is flattened at load time. Members from the nested ring are merged in, no duplicates. It's rings all the way down. But not infinitely. We have stack limits. And taste.
+
+---
+
+To join someone's ring, you ask them. Out of band. Email. DM. Carrier pigeon. There's no application process, no algorithm, no approval queue. It's human curation, deliberately. The world has enough automated recommendation engines.
+
+  burrow ring list          show your rings
+  burrow ring show name     show ring members
+  burrow ring remove name /~user   remove a member
+
+Visit /rings to see all rings on the server. Visit /discover to see them alongside trending posts and bookmarks. The ring navigation appears automatically on every text page of every member.
+
+/~burrow/manual/06-bookmarks   ← Bookmarks
+/~burrow/manual/08-search   Next: Search →

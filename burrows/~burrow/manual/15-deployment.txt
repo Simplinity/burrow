@@ -1,0 +1,63 @@
+# Deployment
+
+Five ways to run burrowd. All of them take less time than explaining your Kubernetes setup.
+
+---
+
+Local development:
+
+  burrowd
+
+That's it. Serves on localhost:7070 and your LAN IP. Visit from your phone.
+
+---
+
+One-liner install on a fresh server:
+
+  curl -fsSL https://raw.githubusercontent.com/Simplinity/burrow/master/install.sh | bash
+  burrow server init --domain myblog.example.com
+  burrowd
+
+Three commands. Zero to serving in under a minute. The install script detects your OS (Linux or macOS) and architecture (x86_64 or aarch64), downloads the latest release, and installs to /usr/local/bin. The entire binary is smaller than a typical profile picture.
+
+---
+
+systemd (for the Linux faithful):
+
+  cp burrowd.service /etc/systemd/system/
+  systemctl enable burrowd
+  systemctl start burrowd
+
+The included service file runs as a burrow user from /opt/burrow, restarts on failure, and sets RUST_LOG=info for structured logging.
+
+---
+
+Docker:
+
+  docker build -t burrow .
+  docker run -p 7070:7070 -v ./burrows:/burrow/burrows burrow
+
+Multi-stage Alpine build. The final image is under 20 MB. For comparison, the official Node.js image is 350 MB and it doesn't even serve files yet.
+
+---
+
+With TLS (production):
+
+  burrow server init --domain mysite.com --port 443
+  # add tls_cert and tls_key to burrow.conf
+  burrowd
+
+No reverse proxy needed. No Caddy. No nginx. burrowd handles TLS natively. One binary, one config file, one port. The way servers used to work before we decided everything needed twelve containers and an orchestrator.
+
+---
+
+Access logging:
+
+  RUST_LOG=info burrowd      method, path, status, latency
+  RUST_LOG=debug burrowd     verbose
+  RUST_LOG=warn burrowd      only problems
+
+Structured logging via tracing. Every request gets a single log line. No log4j. No log rotation daemon. No 50GB /var/log surprise on a Monday morning.
+
+/~burrow/manual/14-tls   ← TLS & Security
+/~burrow/manual/16-cli   Next: CLI Reference →

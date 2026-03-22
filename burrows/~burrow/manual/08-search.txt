@@ -1,0 +1,41 @@
+# Search — Veronica-NG
+
+Gopher's original search engine was called Veronica. Very Easy Rodent-Oriented Net-wide Index to Computerized Archives. The '90s were wild.
+
+We resurrected it.
+
+---
+
+Veronica-NG is a full-text search engine built into burrowd. No external service. No Elasticsearch cluster. No 4GB Java heap. No monthly invoice from Algolia. Just an in-memory inverted index built on startup from your filesystem.
+
+Visit /search. Type a query. Get results. That's it.
+
+  /search?q=typography                     full-text search
+  /search?q=plaintext author:~bruno       filter by author
+  /search?q=web type:phlog                only phlog posts
+  /search?q=minimalism fresh:30           last 30 days only
+
+---
+
+Results are ranked by BM25 — the same algorithm Wikipedia uses — with two Burrow-specific tweaks:
+
+Title boost: terms found in titles score 3x higher. Because titles are important. That's why they're titles.
+
+Freshness boost: recent posts get up to 1.5x score, decaying linearly over 90 days. A post from today scores higher than the same words written a year ago. After 90 days, freshness is neutral. Your evergreen content isn't penalized. It just doesn't get a recency bonus.
+
+---
+
+There is no personalization. No "recommended for you." No filter bubble. The same query returns the same results for everyone.
+
+If that means you occasionally discover something outside your comfort zone — good. That's a feature.
+
+---
+
+For federation, burrowd exposes /search/index.json — a full document index that other servers can import for cross-server search:
+
+  {"version":1, "server":"myhole.example.com", "documents":[...]}
+
+No crawling. No scraping. No robots.txt negotiations. Just a JSON file. Federation by URL. The simplest model that could possibly work.
+
+/~burrow/manual/07-rings   ← Rings
+/~burrow/manual/09-discover   Next: Discover & Firehose →

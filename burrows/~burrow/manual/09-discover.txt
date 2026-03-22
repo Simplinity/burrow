@@ -1,0 +1,34 @@
+# Discover & Firehose
+
+Two ways to explore. One curated. One chaotic. Both intentional.
+
+---
+
+/discover is the front page of the burrowverse. A daily-changing snapshot:
+
+★ Most bookmarked — pages that the most people saved. The only popularity signal. No likes. No views. Just: someone cared enough to bookmark it.
+
+Random burrow — a different burrow every page load. The StumbleUpon of plaintext. Refresh and discover someone new. This is the feature that makes people stay.
+
+Latest posts — the newest phlog entries across all burrows. Chronological. Unranked.
+
+◎ Rings — active webrings with member counts.
+
+All burrows — the full directory. Because sometimes you just want to browse.
+
+---
+
+/firehose is the raw stream. Every post, every burrow, reverse chronological. No ranking. No filtering. No "based on your interests." Just everything, newest first.
+
+It's intentionally overwhelming. It's not meant to be read cover-to-cover. It's meant to be glanced at. You pick up patterns: "a lot of people are writing about Rust today" or "there's a cluster of climate posts."
+
+The firehose is paginated. Twenty posts per page. Click "Older" to go back in time. There is no "Newer" on the first page, because the future hasn't been written yet. (Except in the sense that you should go write it.)
+
+---
+
+Neither /discover nor /firehose uses an algorithm. The ranking on Discover comes from bookmark counts — a human signal, not a machine signal. The Firehose is chronological. Both are the same for every visitor.
+
+We believe the best recommendation engine is a curious person with free time.
+
+/~burrow/manual/08-search   ← Search
+/~burrow/manual/10-mentions   Next: Mentions & Federation →

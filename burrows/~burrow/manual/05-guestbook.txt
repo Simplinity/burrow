@@ -1,0 +1,46 @@
+# Guestbook
+
+It's not the '90s internet without one.
+
+---
+
+  burrow guestbook init
+
+This creates a guestbook.gph file in your burrow. Visitors can sign it at /~yourname/guestbook. There's a form. It's plain HTML. No JavaScript. It works in Lynx. It works in curl if you're that kind of person. It works in the browser your grandma uses.
+
+Entries look like this:
+
+  --- Nostalgic Gopher · 2026-03-22 01:56
+  Your site loads faster than my thoughts. Respect.
+
+  --- Anonymous · 2026-03-22 14:30
+  I haven't seen a guestbook since GeoCities. I'm not crying.
+
+  --- xXx_DarkCoder_xXx · 2026-03-22 15:12
+  tried to XSS your guestbook. it escaped my script tag.
+  i respect that. signing the book instead.
+
+---
+
+Limits, because the internet is why we can't have nice things:
+
+Name: 40 characters. You're signing a book, not writing your LinkedIn headline.
+
+Message: 500 characters. A note, not a blog post. You have your own burrow for that.
+
+Total entries: 200 per guestbook. After 200, start a new one. Or bask in your popularity.
+
+Rate: one signature per 30 seconds per IP. Spammers will need to be very patient.
+
+Format injection: if you type --- in your message, it becomes an em dash. Nice try with the entry separators.
+
+---
+
+Read entries from the terminal:
+
+  burrow guestbook show
+
+They print with name, date, and message. It's like checking the visitor book at a museum, except the museum is your personal corner of the internet and the visitors are strangers who care about plaintext.
+
+/~burrow/manual/04-directories   ← Directories & Config
+/~burrow/manual/06-bookmarks   Next: Bookmarks →

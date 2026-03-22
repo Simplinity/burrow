@@ -1,0 +1,34 @@
+# Bookmarks
+
+Your taste, on display.
+
+---
+
+Every burrow can have public bookmarks. They're your curated links — the things you found valuable enough to save. They function as a recommendation engine, a social signal, and a window into what you care about.
+
+  burrow bookmark add https://100r.co -d "Hundred Rabbits — off-grid computing"
+  burrow bookmark add /~maya/about -d "Maya's about page"
+  burrow bookmark list
+  burrow bookmark remove 3
+
+Bookmarks are stored in bookmarks.gph using the standard link format:
+
+  → https://100r.co   Hundred Rabbits — off-grid computing · 2026-03-19
+  /~maya/about   Maya's about page · 2026-03-20
+
+External links get the → arrow. Internal links start with /. Dates are auto-appended.
+
+---
+
+The server aggregates bookmark counts across all burrows. If three people bookmark the same post, it shows up on the Discover page under "Most bookmarked" with a ★ icon.
+
+This is the only popularity metric in Burrow. No likes. No hearts. No "fire" emoji. Just: someone cared enough to save it. The count is never shown on the bookmarked page itself. The author doesn't see a number. There's no dopamine loop. You write because you have something to say, not because you're chasing a counter.
+
+---
+
+Visit /~yourname/bookmarks to see anyone's public bookmarks. They render with a dedicated page: external links with → icons, internal links with / icons, descriptions underneath.
+
+Think of bookmarks as your public library card. The books you check out say more about you than your bio ever could.
+
+/~burrow/manual/05-guestbook   ← Guestbook
+/~burrow/manual/07-rings   Next: Rings →

@@ -1,0 +1,33 @@
+# RSS & Atom Feeds
+
+Every burrow gets feeds. Automatically. No configuration. No plugins. It just works, like things used to.
+
+---
+
+  /~alice/feed.xml    RSS 2.0
+  /~alice/feed        same, for the lazy typist
+  /~alice/atom.xml    Atom 1.0
+  /~alice/atom        same, lazy typist edition
+
+The feeds include all .txt posts from the phlog/ directory, sorted newest first, with a content preview from the first five non-empty lines after the title.
+
+Your favorite feed reader will auto-discover both feeds via link-rel-alternate tags in every page's head. NetNewsWire. Miniflux. Elfeed. Newsboat. You have a feed reader, right?
+
+Right?
+
+---
+
+Feed URLs use whatever domain you configured:
+
+  burrow server init --domain myblog.example.com
+
+Localhost gets http:// URLs. A real domain gets https:// because it's 2026 and we assume you're not a barbarian.
+
+---
+
+Why both RSS and Atom? Because some feed readers prefer RSS 2.0 and some prefer Atom 1.0 and we're not getting involved in that argument. Both are generated from the same source. Both are valid. Both are auto-discovered. Pick whichever one you pick. We genuinely do not care.
+
+What we do care about: your feed is fast. It's a single XML document generated on request from the filesystem. No database query. No cache layer. No CDN. Just read the directory, build the XML, send it. The entire feed response takes single-digit milliseconds.
+
+/~burrow/manual/11-gallery   ← Gallery
+/~burrow/manual/13-gemini   Next: Gemini →

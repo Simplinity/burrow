@@ -86,6 +86,6 @@ impl ServerConfig {
     }
 
     pub fn bind_addr(&self) -> String {
-        format!("127.0.0.1:{}", self.port)
+        format!("0.0.0.0:{}", self.port)
     }
 }

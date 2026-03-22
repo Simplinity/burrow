@@ -1,0 +1,46 @@
+# Gemini Protocol
+
+burrowd speaks Gemini. Because when the Gemini community built a protocol even more minimal than Gopher, we felt seen.
+
+---
+
+Add three lines to burrow.conf:
+
+  gemini_port = 1965
+  tls_cert = /path/to/cert.pem
+  tls_key = /path/to/key.pem
+
+Restart burrowd. It now listens on port 1965 alongside HTTP. Same content, different protocol. Your .gph files are auto-converted to Gemtext on the fly.
+
+The conversion is nearly 1:1 because .gph was designed with Gemini in mind:
+
+  # Heading       stays   # Heading
+  > Quote         stays   > Quote
+  → URL           becomes => URL
+  /~user   Desc   becomes => /~user Desc
+  code blocks     get triple backticks
+  ---             becomes a blank line
+  plain text      stays plain text
+
+Directory listings render as Gemini link pages. The home page lists all burrows. Every route that works over HTTP works over Gemini.
+
+---
+
+Why Gemini matters: the Gemini community is small but passionate. They care about the same things we care about — simplicity, privacy, user agency, beautiful plaintext. Burrow should embrace them, not compete with them.
+
+The Gemini bridge is a statement: we're building a protocol, not a walled garden. We talk to other protocols. Your words are not trapped here.
+
+---
+
+Test with any Gemini client:
+
+  amfora gemini://localhost:1965/~bruno/about
+
+Or the hard way:
+
+  echo "gemini://localhost/~bruno/about" | openssl s_client -connect localhost:1965
+
+Both work. Both show your about.txt rendered as Gemtext. Neither required you to change a single character of your content.
+
+/~burrow/manual/12-feeds   ← Feeds
+/~burrow/manual/14-tls   Next: TLS & Security →

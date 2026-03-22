@@ -1,0 +1,4 @@
+title = The Manual
+description = Everything you need to know, nothing you don't
+sort = name-asc
+pin = 01-getting-started.txt 02-writing.txt

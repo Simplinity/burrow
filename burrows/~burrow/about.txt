@@ -1,0 +1,16 @@
+# About Burrow
+
+The internet is bloated. We dug a way out.
+
+Burrow is a plaintext content server inspired by Gopher, built for people who think the web peaked around 1997 but couldn't quite admit it until now.
+
+It serves your words over HTTP, HTTPS, and Gemini. It renders them in beautiful typography. It refuses to execute JavaScript. (One scroll handler got through. It's on probation.)
+
+Every burrow lives in a ~username/ directory, because tildes were the original social network and we will die on this hill.
+
+---
+
+This burrow is the manual. Each page covers one feature. Read them in order or wander. That's what burrows are for.
+
+/~burrow/manual   Read the manual
+→ https://github.com/Simplinity/burrow   Source code

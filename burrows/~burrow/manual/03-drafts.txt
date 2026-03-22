@@ -1,0 +1,36 @@
+# Drafts & Publishing
+
+The publishing model is a filename convention. There is no "publish" button.
+
+---
+
+Files prefixed with _ are drafts. They are invisible to the world. Not hidden. Invisible. The server returns 404 for them, as if they don't exist. Because as far as the internet is concerned, they don't.
+
+  _half-baked-manifesto.txt     ← invisible
+  _work-in-progress.txt         ← invisible
+  my-finished-post.txt          ← published
+
+To publish a draft, remove the underscore:
+
+  mv _my-post.txt my-post.txt
+
+To unpublish, add it back:
+
+  mv my-post.txt _my-post.txt
+
+That's the entire workflow. No draft mode. No scheduling system. No "are you sure you want to publish?" modal. Rename a file. Unix had this figured out before most of us were born.
+
+---
+
+Preview drafts in your terminal before publishing:
+
+  burrow preview _my-draft.txt
+
+This renders the .gph markup with terminal colors: headings bold, quotes italic, code in cyan, links in accent color. It's not pixel-perfect, but it's close enough to catch embarrassing typos before the world sees them.
+
+---
+
+Files starting with . are also hidden and blocked. The .burrow config file uses this. You probably shouldn't name your posts with a dot prefix unless you're making a philosophical statement about the hidden nature of all writing.
+
+/~burrow/manual/02-writing   ← Writing in Burrow
+/~burrow/manual/04-directories   Next: Directories & Config →

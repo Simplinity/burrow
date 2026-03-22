@@ -1,0 +1,39 @@
+# ASCII Art Gallery
+
+We have culture.
+
+---
+
+Any directory named gallery/ gets special treatment. Instead of a plain file listing, burrowd renders a CSS grid of preview cards — each showing a 12-line monospace preview at 7px font, with a gradient fade at the bottom and a hover effect that lifts the card.
+
+Click a card and the full art renders in a dedicated viewer. Monospace. Accent-colored. Auto-scaled font size based on the art's character width: 12px for narrow pieces, 6px for wide panoramas.
+
+---
+
+Adding art to your gallery:
+
+  mkdir -p burrows/~you/gallery
+  vim burrows/~you/gallery/landscape.txt
+
+That's it. The first line becomes the title (strip the # if you use a heading). The rest is the art. Every .txt and .gph file in gallery/ becomes a gallery piece.
+
+Each card shows:
+
+The title. A monospace preview (first 12 lines). Line count and maximum character width (e.g. "18L · 45W"). These metrics are for the connoisseur who appreciates both the aesthetics and the engineering.
+
+---
+
+Why ASCII art? Because Burrow values craft — the careful arrangement of characters to create beauty within constraints. That philosophy extends to everything on the platform.
+
+A well-written phlog post is a form of craft. A thoughtfully organized burrow is a form of craft. A perfectly aligned box-drawing character is a form of craft.
+
+The constraint of plaintext isn't a limitation. It's a creative medium. Ask any poet about constraints. Ask any haiku writer. Ask anyone who's ever built something beautiful in 80 columns.
+
+  ┌─────────────────────────────┐
+  │  Your art here.             │
+  │  64 KB limit.               │
+  │  Unlimited imagination.     │
+  └─────────────────────────────┘
+
+/~burrow/manual/10-mentions   ← Mentions & Federation
+/~burrow/manual/12-feeds   Next: Feeds →

@@ -1,0 +1,35 @@
+# Getting Started
+
+You need two things: the burrow binary and something to say.
+
+---
+
+Install with one command:
+
+  curl -fsSL https://raw.githubusercontent.com/Simplinity/burrow/master/install.sh | bash
+
+This gives you two binaries: burrowd (the server) and burrow (the CLI). The total download is smaller than a typical React component.
+
+Create your first burrow:
+
+  burrow init yourname
+
+This creates a ~yourname/ directory with an about.txt and a phlog/ folder. That's your entire content management system. You're welcome.
+
+Write your first post:
+
+  burrow new "Why I left Medium"
+
+This opens your $EDITOR with a file named 2026-03-22-why-i-left-medium.txt. Write something. Save. Close. It's published.
+
+Start the server:
+
+  burrowd
+
+Visit http://localhost:7070. There's your burrow. There are your words. There's nothing else competing for attention. That's the point.
+
+---
+
+The whole process takes about 90 seconds. That's less time than it takes to accept the cookie banner on most websites.
+
+/~burrow/manual/02-writing   Next: Writing in Burrow →

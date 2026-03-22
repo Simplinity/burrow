@@ -1,0 +1,37 @@
+# TLS & Security
+
+We take security seriously, even if we don't take much else seriously.
+
+---
+
+HTTPS is native. No nginx. No Caddy. No reverse proxy required. Add two lines to burrow.conf:
+
+  tls_cert = /etc/letsencrypt/live/mysite.com/fullchain.pem
+  tls_key = /etc/letsencrypt/live/mysite.com/privkey.pem
+
+burrowd uses rustls — a pure-Rust TLS implementation. No OpenSSL. No libssl. No C code in the crypto stack. No CVE lottery ticket.
+
+Without TLS config, burrowd serves plain HTTP. Both modes show your local IP and localhost address in the startup banner, so you can test from any device on your network.
+
+---
+
+Path traversal protection: all paths are canonicalized via fs::canonicalize() and verified with starts_with(). Your ../../etc/passwd won't work. Neither will ....//....//etc/passwd. Neither will percent-encoded variants. We've heard them all.
+
+HTML escaping: two layers. html_escape() for text content: < becomes &lt;. html_escape_attr() for URL attributes: " becomes &quot;. Because XSS is not a feature we're shipping.
+
+XML escaping: RSS and Atom feeds are escaped separately. Your phlog title with angle brackets will render as literal text, as God intended.
+
+Draft enforcement: files starting with _ or . return 404, not 403. The file doesn't exist as far as the internet is concerned. No information leakage about which drafts you have.
+
+Rate limiting: guestbook POST at one per 30 seconds per IP. Federation pings capped at 100 entries per server. Enough for conversation. Not enough for abuse.
+
+File size limits: 64 KB for text, 2 MB for binaries. Path depth: 8 levels maximum. These aren't restrictions. They're the aesthetic.
+
+---
+
+The security model is simple because the attack surface is small. burrowd serves files. It doesn't execute code. It doesn't process uploads (except guestbook text and federation pings). It doesn't have an admin panel. It doesn't store passwords. It doesn't set cookies. It doesn't track users.
+
+The most dangerous thing it does is append a line to a guestbook file. We had a very long meeting about that.
+
+/~burrow/manual/13-gemini   ← Gemini
+/~burrow/manual/15-deployment   Next: Deployment →

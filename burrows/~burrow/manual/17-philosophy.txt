@@ -1,0 +1,52 @@
+# Philosophy
+
+Or: why we built this instead of just using WordPress.
+
+---
+
+The average web page in 2026 weighs 2.8 MB. It loads 47 trackers, 12 ad networks, and a consent banner more complex than the content you came for. You scroll through AI-generated slop to find a recipe buried under seventeen affiliate links and a video that autoplays at full volume.
+
+We forgot what the internet was for.
+
+---
+
+Gopher remembered. In 1991, the University of Minnesota built a protocol so simple it fit on a napkin. No fonts. No layout. No JavaScript. Just directories and text. You asked for something, you got it.
+
+Gopher died because the web was more capable. Fair enough. But "more capable" metastasized into "more extractive." The web didn't just add images and layout — it added surveillance capitalism, infinite scroll, engagement algorithms, and a business model that treats your attention as a commodity to be strip-mined.
+
+---
+
+Burrow is not a time machine. We're not LARPing the '90s. We're taking the philosophy of Gopher — text-first, zero-bloat, human-speed, user-owned — and building it for people who are tired but don't want to give up.
+
+Your burrow is a directory of files. Not a database entry. Not a row in someone else's table. Files. On a disk. You own them. You can read them with cat. You can edit them with vim. You can back them up with cp. You can move them to another server with scp.
+
+---
+
+What Burrow deliberately lacks:
+
+Followers and following. You don't follow people. You bookmark their pages. If you want updates, subscribe to their feed. RSS is not dead. It just stopped being fashionable. Like vinyl, it came back.
+
+Likes and reactions. No hearts, no thumbs-up. If you appreciate something, bookmark it (public curation) or write a response on your own phlog (public conversation).
+
+Comments. There is no comment section. If you have something to say about someone's writing, write about it in your own burrow and link back. This forces you to create something of your own. It raises the bar for discourse.
+
+Notifications. None. At all. No bell icon. No badge count. You open Burrow when you want to. You close it when you're done. It never reaches out to pull you back.
+
+DMs. Burrow is not a communication tool. It's a publishing tool. If you want to talk to someone, there's probably a contact.txt in their burrow with an email address.
+
+---
+
+What remains after stripping all this away? A reading and writing tool. That's it. You publish things, you read things, you bookmark the good things. The social dynamics emerge from the content, not from engagement features.
+
+A burrow is small, warm, and yours. That's always been the promise of the personal internet. We just forgot, for a while, what it felt like.
+
+---
+
+  The best writing tool is the one that disappears.
+  The best reading experience is the one with nothing else on screen.
+  The best social network is the one that doesn't need you to come back.
+
+  Now go write something.
+
+/~burrow/manual/16-cli   ← CLI Reference
+/~burrow/about   ← Back to about

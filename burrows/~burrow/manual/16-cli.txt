@@ -1,0 +1,71 @@
+# CLI Reference
+
+The burrow CLI is the power tool. Twenty-seven commands. Zero ambiguity.
+
+---
+
+Creating and managing:
+
+  burrow init <name>              dig a new burrow
+  burrow new "Title"              create a phlog post, open $EDITOR
+  burrow edit <path>              open any file in $EDITOR
+  burrow preview <path>           terminal preview with gph rendering
+  burrow ls [path]                list burrow contents
+  burrow status                   files, size, latest post, disk usage
+  burrow switch [name]            switch active burrow or list all
+
+---
+
+Publishing and syncing:
+
+  burrow push <remote>            sync to remote server via rsync/SSH
+  burrow pull <remote>            sync from remote server
+  burrow export [output]          backup as .tar.gz
+
+Your burrow is a directory of files. Push copies it to a server. Pull copies it back. Export compresses it. No API. No authentication token. No "download your data" button that gives you a useless JSON blob. It's files. You copy them. Done.
+
+---
+
+Social features:
+
+  burrow bookmark add <url>       add a public bookmark
+  burrow bookmark list            show your bookmarks
+  burrow bookmark remove <n>      remove by number
+  burrow guestbook init           create a guestbook
+  burrow guestbook show           read entries
+  burrow ring create "Name"       create a webring
+  burrow ring add <ring> <member> add a member
+  burrow ring remove <ring> <m>   remove a member
+  burrow ring show <ring>         display members
+  burrow ring list                list your rings
+
+---
+
+Search and discovery:
+
+  burrow search "query"           grep-style search, highlighted matches
+  burrow search "query" --all     search all burrows, not just yours
+  burrow timecapsule [year]       generate a year-in-review
+
+The search command is local — it searches your filesystem directly, with case-insensitive matching and yellow-highlighted terms. It shows file paths with line numbers. It's grep with a better UI.
+
+---
+
+Protocol:
+
+  burrow open gph://url           open a gph:// URL
+  burrow register                 register gph:// handler on your OS
+  burrow server init              configure domain and port
+
+The open command tries local preview first. If the file exists in your burrows/ directory, it renders in the terminal with gph markup colors. If not, it converts gph:// to https:// and opens your browser.
+
+The register command creates a system-level URL scheme handler. On macOS it builds a .app bundle in ~/Applications. On Linux it writes a .desktop file in ~/.local/share/applications. After registration, clicking gph:// links anywhere on your system routes to burrow open.
+
+---
+
+Every command prints clean, colored output. No JSON. No machine-readable flags. Just human-readable text with ANSI colors: cyan for paths, green for success, red for errors, gray for metadata.
+
+The entire CLI is built with Clap 4 in Rust. Tab completion is free. Help text is built-in. Typo correction is automatic. The binary is under 10 MB.
+
+/~burrow/manual/15-deployment   ← Deployment
+/~burrow/manual/17-philosophy   Next: Philosophy →

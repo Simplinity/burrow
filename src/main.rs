@@ -383,6 +383,8 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .with_state(state.clone());
 
+    let local_ip = local_ip_address().unwrap_or_else(|| "127.0.0.1".to_string());
+
     println!("\n  \x1b[1m/\x1b[0m burrow v0.1.0\n");
     println!("  Tunneling...\n");
     println!("  Domain:         \x1b[36m{}\x1b[0m", cfg.domain);
@@ -406,7 +408,8 @@ async fn main() {
         let cert_path = cfg.tls_cert.as_ref().unwrap();
         let key_path = cfg.tls_key.as_ref().unwrap();
 
-        println!("  HTTPS:          \x1b[36mhttps://{}\x1b[0m", addr);
+        println!("  Local:          \x1b[36mhttps://localhost:{}\x1b[0m", cfg.port);
+        println!("  Network:        \x1b[36mhttps://{}:{}\x1b[0m", local_ip, cfg.port);
         println!("  TLS cert:       \x1b[36m{}\x1b[0m", cert_path);
         println!("  TLS key:        \x1b[36m{}\x1b[0m", key_path);
         println!("  Burrow root:    \x1b[36m./burrows/\x1b[0m\n");
@@ -427,7 +430,8 @@ async fn main() {
             .await
             .unwrap();
     } else {
-        println!("  HTTP:           \x1b[36mhttp://{}\x1b[0m", addr);
+        println!("  Local:          \x1b[36mhttp://localhost:{}\x1b[0m", cfg.port);
+        println!("  Network:        \x1b[36mhttp://{}:{}\x1b[0m", local_ip, cfg.port);
         println!("  Burrow root:    \x1b[36m./burrows/\x1b[0m\n");
         if !cfg.has_gemini() {
             println!("  \x1b[90mTip: Add tls_cert, tls_key, and gemini_port to burrow.conf for Gemini\x1b[0m\n");
@@ -1881,6 +1885,15 @@ async fn post_guestbook(
     let _ = fs::write(&canonical, content).await;
 
     Redirect::to(&format!("/{}", path)).into_response()
+}
+
+fn local_ip_address() -> Option<String> {
+    use std::net::UdpSocket;
+    // Connect to a public IP to determine the local interface address
+    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    let addr = socket.local_addr().ok()?;
+    Some(addr.ip().to_string())
 }
 
 // ── Gemini Protocol ─────────────────────────────────────────────

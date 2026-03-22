@@ -1,0 +1,45 @@
+# Writing in Burrow
+
+Burrow uses a markup format called .gph. It is aggressively simple.
+
+---
+
+  # Heading
+
+One level. No h2/h3/h4/h5/h6 hierarchy. If your document needs six levels of headings, it needs to be six documents.
+
+  Regular text
+
+Just write. Lines wrap at the client's discretion. No bold. No italic. If your words need formatting to be understood, rewrite your words.
+
+  > A blockquote
+
+For when someone else said it better.
+
+  ---
+
+A horizontal rule. A breath between sections. Use sparingly, like hot sauce and semicolons.
+
+    Code blocks (two spaces indent)
+    fn main() {
+        println!("Hello, gopherspace");
+    }
+
+No syntax highlighting. Your code should speak for itself. If it can't, that's a code review issue, not a rendering issue.
+
+  → https://example.com
+
+An external link. The arrow is mandatory. Commitment is important.
+
+  /~someone/about   A link to another burrow page
+
+Internal links. Three spaces between path and description.
+
+---
+
+That's it. The entire format fits on an index card. The entire format will still be readable in fifty years, in any text editor, on any operating system. Try saying that about your Notion workspace.
+
+What's deliberately missing: bold, italic, tables, inline links, images, emoji shortcodes, and anything that would make you think about formatting instead of thinking about what you're writing.
+
+/~burrow/manual/01-getting-started   ← Getting Started
+/~burrow/manual/03-drafts   Next: Drafts & Publishing →

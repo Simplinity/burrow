@@ -54,9 +54,10 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 @media(max-width:700px){.sidebar{display:none}.main{padding:20px 16px}}
 "#;
 
-fn head(title: &str, addr: &str) -> String {
+fn head(title: &str, addr: &str, domain: &str) -> String {
     let title = html_escape(title);
     let addr = html_escape(addr);
+    let domain = html_escape(domain);
     format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -69,18 +70,19 @@ fn head(title: &str, addr: &str) -> String {
 <div class="topbar">
   <a href="/" class="logo"><span>/</span> burrow</a>
   <div class="addr-bar">
-    <span style="color:var(--muted)">gph://</span><span class="host">phlogosphere.net</span>{addr}
+    <span style="color:var(--muted)">gph://</span><span class="host">{domain}</span>{addr}
   </div>
 </div>"#)
 }
 
-fn footer() -> &'static str {
-    r#"<div class="statusbar">
+fn footer(domain: &str) -> String {
+    let domain = html_escape(domain);
+    format!(r#"<div class="statusbar">
   <span>Local · TLS 1.3 · burrow v0.1.0</span>
-  <span>phlogosphere.net</span>
+  <span>{domain}</span>
 </div>
 <div class="banner">This page lives on Burrow. <a href="https://burrow.fyi">Claim your own hole →</a></div>
-</body></html>"#
+</body></html>"#)
 }
 
 fn sidebar(active: &str, entries: &[BurrowEntry]) -> String {
@@ -125,27 +127,29 @@ fn render_entries(entries: &[BurrowEntry]) -> String {
     html
 }
 
-pub fn home_page(burrows: &[BurrowEntry]) -> String {
-    let mut html = head("phlogosphere.net", "/");
+pub fn home_page(burrows: &[BurrowEntry], domain: &str) -> String {
+    let mut html = head(domain, "/", domain);
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs"><a href="/">phlogosphere.net</a> /</div>
-<h1>phlogosphere.net</h1>
+<div class="crumbs"><a href="/">{}</a> /</div>
+<h1>{}</h1>
 <div class="subtitle">Community burrow server — {} burrows</div>
 {}</div></div>"#,
         sidebar("/", burrows),
+        html_escape(domain),
+        html_escape(domain),
         burrows.len(),
         render_entries(burrows),
     ));
-    html.push_str(footer());
+    html.push_str(&footer(domain));
     html
 }
 
-pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntry]) -> String {
-    let crumbs = build_crumbs(path);
+pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntry], domain: &str) -> String {
+    let crumbs = build_crumbs(path, domain);
     let desc = entries.first().map(|_| "").unwrap_or("");
     let addr = format!("/{}", path);
 
-    let mut html = head(path, &addr);
+    let mut html = head(path, &addr, domain);
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
 <div class="crumbs">{}</div>
 <h1>{}/</h1>
@@ -155,17 +159,17 @@ pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntr
         crumbs, html_escape(path), desc,
         render_entries(entries),
     ));
-    html.push_str(footer());
+    html.push_str(&footer(domain));
     html
 }
 
-pub fn text_page(path: &str, filename: &str, content: &str) -> String {
-    let crumbs = build_crumbs(path);
+pub fn text_page(path: &str, filename: &str, content: &str, domain: &str) -> String {
+    let crumbs = build_crumbs(path, domain);
     let words = content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
     let rendered = render_gph(content);
 
-    let mut html = head(filename, &format!("/{}", path));
+    let mut html = head(filename, &format!("/{}", path), domain);
     html.push_str(&format!(r#"<div class="progress" id="prog"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
@@ -174,8 +178,7 @@ pub fn text_page(path: &str, filename: &str, content: &str) -> String {
 {rendered}
 </div>
 </div>"#));
-    html.push_str(footer());
-    // Replace closing </body></html> to inject scroll script before it
+    html.push_str(&footer(domain));
     let html = html.replace("</body></html>", r#"<script>
 window.addEventListener('scroll',()=>{
   const h=document.documentElement;
@@ -187,20 +190,20 @@ window.addEventListener('scroll',()=>{
     html
 }
 
-pub fn not_found_page(path: &str) -> String {
-    let mut html = head("404", &format!("/{}", path));
+pub fn not_found_page(path: &str, domain: &str) -> String {
+    let mut html = head("404", &format!("/{}", path), domain);
     html.push_str(r#"<div class="notfound">
 <p style="font-size:48px;margin-bottom:16px;">/∅</p>
 <p>This hole leads nowhere.<br>Most holes do. That's the charm.</p>
 <p style="margin-top:24px;"><a href="/">← Back to the surface</a></p>
 </div>"#);
-    html.push_str(footer());
+    html.push_str(&footer(domain));
     html
 }
 
-fn build_crumbs(path: &str) -> String {
+fn build_crumbs(path: &str, domain: &str) -> String {
     let parts: Vec<&str> = path.split('/').filter(|p| !p.is_empty()).collect();
-    let mut html = String::from(r#"<a href="/">phlogosphere.net</a>"#);
+    let mut html = format!(r#"<a href="/">{}</a>"#, html_escape(domain));
     let mut acc = String::new();
     for part in &parts {
         acc.push_str(&format!("/{}", part));

@@ -1,5 +1,5 @@
 use axum::{
-    extract::Path,
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::get,
@@ -7,34 +7,41 @@ use axum::{
 };
 use std::fs;
 use std::path;
+use std::sync::Arc;
 
+mod config;
 mod render;
 
 const MAX_FILE_SIZE: u64 = 1_048_576; // 1 MB
 
 #[tokio::main]
 async fn main() {
+    let cfg = config::ServerConfig::load();
+    let domain = Arc::new(cfg.domain.clone());
+    let addr = cfg.bind_addr();
+
     let app = Router::new()
         .route("/", get(home))
-        .route("/{*path}", get(serve_burrow));
+        .route("/{*path}", get(serve_burrow))
+        .with_state(domain);
 
-    let addr = "127.0.0.1:7070";
     println!("\n  \x1b[1m/\x1b[0m burrow v0.1.0\n");
     println!("  Tunneling...\n");
+    println!("  Domain:         \x1b[36m{}\x1b[0m", cfg.domain);
     println!("  HTTPS gateway:  \x1b[36mhttp://{}\x1b[0m", addr);
     println!("  Burrow root:    \x1b[36m./burrows/\x1b[0m\n");
     println!("  Press Ctrl+C to fill in the hole.\n");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn home() -> Html<String> {
+async fn home(State(domain): State<Arc<String>>) -> Html<String> {
     let burrows = list_burrows();
-    Html(render::home_page(&burrows))
+    Html(render::home_page(&burrows, &domain))
 }
 
-async fn serve_burrow(Path(path): Path<String>) -> Response {
+async fn serve_burrow(Path(path): Path<String>, State(domain): State<Arc<String>>) -> Response {
     let burrows_root = fs::canonicalize("burrows").unwrap_or_else(|_| path::PathBuf::from("burrows"));
     let fs_path = path::PathBuf::from("burrows").join(&path);
 
@@ -48,27 +55,27 @@ async fn serve_burrow(Path(path): Path<String>) -> Response {
                 Ok(p) if p.starts_with(&burrows_root) => {
                     let content = read_file_checked(&p);
                     let filename = p.file_name().unwrap().to_str().unwrap();
-                    return Html(render::text_page(&path, filename, &content)).into_response();
+                    return Html(render::text_page(&path, filename, &content, &domain)).into_response();
                 }
                 _ => {
-                    return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path))).into_response();
+                    return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
                 }
             }
         }
     };
 
     if !canonical.starts_with(&burrows_root) {
-        return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path))).into_response();
+        return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
     }
 
     if canonical.is_dir() {
         let burrows = list_burrows();
         let entries = list_directory(&canonical, &burrows_root);
-        Html(render::directory_page(&path, &entries, &burrows)).into_response()
+        Html(render::directory_page(&path, &entries, &burrows, &domain)).into_response()
     } else {
         let content = read_file_checked(&canonical);
         let filename = canonical.file_name().unwrap().to_str().unwrap();
-        Html(render::text_page(&path, filename, &content)).into_response()
+        Html(render::text_page(&path, filename, &content, &domain)).into_response()
     }
 }
 

@@ -1,5 +1,7 @@
 use super::*;
 
+const TEST_DOMAIN: &str = "test.burrow.local";
+
 // ── render_gph tests ────────────────────────────────────────────
 
 #[test]
@@ -113,7 +115,6 @@ fn render_gph_escapes_urls_in_href() {
 #[test]
 fn render_gph_escapes_internal_link_href() {
     let html = render::render_gph("/~user/\"onclick=\"alert(1)   description");
-    // The href attribute must have quotes escaped (no attribute breakout)
     assert!(html.contains("href=\"/~user/&quot;onclick=&quot;alert(1)\""));
     assert!(html.contains("description"));
 }
@@ -129,7 +130,7 @@ fn home_page_escapes_entry_names() {
         meta: "1 items".to_string(),
         path: "/~test".to_string(),
     }];
-    let html = render::home_page(&entries);
+    let html = render::home_page(&entries, TEST_DOMAIN);
     assert!(!html.contains("<script>alert(1)</script>"));
     assert!(html.contains("&lt;script&gt;"));
 }
@@ -143,7 +144,7 @@ fn home_page_escapes_descriptions() {
         meta: "1 items".to_string(),
         path: "/~test".to_string(),
     }];
-    let html = render::home_page(&entries);
+    let html = render::home_page(&entries, TEST_DOMAIN);
     assert!(!html.contains("<img onerror"));
     assert!(html.contains("&lt;img"));
 }
@@ -168,7 +169,7 @@ fn home_page_contains_burrow_count() {
             path: "/~bob".to_string(),
         },
     ];
-    let html = render::home_page(&entries);
+    let html = render::home_page(&entries, TEST_DOMAIN);
     assert!(html.contains("2 burrows"));
 }
 
@@ -176,31 +177,30 @@ fn home_page_contains_burrow_count() {
 fn directory_page_shows_crumbs() {
     let entries = vec![];
     let burrows = vec![];
-    let html = render::directory_page("~bruno/phlog", &entries, &burrows);
-    assert!(html.contains("phlogosphere.net"));
+    let html = render::directory_page("~bruno/phlog", &entries, &burrows, TEST_DOMAIN);
+    assert!(html.contains(TEST_DOMAIN));
     assert!(html.contains("~bruno"));
     assert!(html.contains("phlog"));
 }
 
 #[test]
 fn text_page_shows_reading_time() {
-    // 230 words = ~1 min read
     let words: Vec<&str> = std::iter::repeat("word").take(230).collect();
     let content = words.join(" ");
-    let html = render::text_page("~bruno/test.txt", "test.txt", &content);
+    let html = render::text_page("~bruno/test.txt", "test.txt", &content, TEST_DOMAIN);
     assert!(html.contains("~1 min read"));
 }
 
 #[test]
 fn text_page_has_progress_bar() {
-    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello");
+    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN);
     assert!(html.contains(r#"id="prog""#));
     assert!(html.contains("scroll"));
 }
 
 #[test]
 fn text_page_uses_shared_head() {
-    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello");
+    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN);
     assert!(html.contains("<!DOCTYPE html>"));
     assert!(html.contains("burrow v0.1.0"));
     assert!(html.contains("gph://"));
@@ -208,14 +208,14 @@ fn text_page_uses_shared_head() {
 
 #[test]
 fn not_found_page_has_back_link() {
-    let html = render::not_found_page("nonexistent");
+    let html = render::not_found_page("nonexistent", TEST_DOMAIN);
     assert!(html.contains(r#"href="/""#));
     assert!(html.contains("Back to the surface"));
 }
 
 #[test]
 fn not_found_page_escapes_path() {
-    let html = render::not_found_page("<script>alert(1)</script>");
+    let html = render::not_found_page("<script>alert(1)</script>", TEST_DOMAIN);
     assert!(!html.contains("<script>alert(1)</script>"));
     assert!(html.contains("&lt;script&gt;"));
 }
@@ -298,7 +298,6 @@ fn list_directory_sorts_dirs_first() {
     let dir = fs::canonicalize("burrows/~bruno").unwrap();
     let entries = list_directory(&dir, &root);
     let dir_count = entries.iter().filter(|e| e.entry_type == EntryType::Directory).count();
-    // All directories should come before files
     for (i, e) in entries.iter().enumerate() {
         if e.entry_type == EntryType::Directory {
             assert!(i < dir_count, "Directory {} found after files", e.name);

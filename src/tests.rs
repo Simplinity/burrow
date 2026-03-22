@@ -222,60 +222,60 @@ fn not_found_page_escapes_path() {
 
 // ── read_file_checked tests ─────────────────────────────────────
 
-#[test]
-fn read_file_checked_reads_small_file() {
-    let content = read_file_checked(std::path::Path::new("Cargo.toml"));
+#[tokio::test]
+async fn read_file_checked_reads_small_file() {
+    let content = read_file_checked(std::path::Path::new("Cargo.toml")).await;
     assert!(content.contains("[package]"));
 }
 
-#[test]
-fn read_file_checked_returns_empty_for_missing() {
-    let content = read_file_checked(std::path::Path::new("nonexistent-file.txt"));
+#[tokio::test]
+async fn read_file_checked_returns_empty_for_missing() {
+    let content = read_file_checked(std::path::Path::new("nonexistent-file.txt")).await;
     assert!(content.is_empty());
 }
 
 // ── read_description tests ──────────────────────────────────────
 
-#[test]
-fn read_description_from_burrow_file() {
-    let desc = read_description(std::path::Path::new("burrows/~bruno"));
+#[tokio::test]
+async fn read_description_from_burrow_file() {
+    let desc = read_description(std::path::Path::new("burrows/~bruno")).await;
     assert!(!desc.is_empty());
     assert!(desc.contains("typografie") || desc.contains("ITAD"));
 }
 
-#[test]
-fn read_description_missing_dir() {
-    let desc = read_description(std::path::Path::new("burrows/nonexistent"));
+#[tokio::test]
+async fn read_description_missing_dir() {
+    let desc = read_description(std::path::Path::new("burrows/nonexistent")).await;
     assert!(desc.is_empty());
 }
 
 // ── first_line_of tests ─────────────────────────────────────────
 
-#[test]
-fn first_line_strips_heading_prefix() {
-    let line = first_line_of(std::path::Path::new("burrows/~bruno/about.txt"));
+#[tokio::test]
+async fn first_line_strips_heading_prefix() {
+    let line = first_line_of(std::path::Path::new("burrows/~bruno/about.txt")).await;
     assert_eq!(line, "About");
 }
 
-#[test]
-fn first_line_missing_file() {
-    let line = first_line_of(std::path::Path::new("nonexistent.txt"));
+#[tokio::test]
+async fn first_line_missing_file() {
+    let line = first_line_of(std::path::Path::new("nonexistent.txt")).await;
     assert!(line.is_empty());
 }
 
 // ── list_burrows tests ──────────────────────────────────────────
 
-#[test]
-fn list_burrows_finds_tilde_dirs() {
-    let burrows = list_burrows();
+#[tokio::test]
+async fn list_burrows_finds_tilde_dirs() {
+    let burrows = list_burrows().await;
     assert!(burrows.len() >= 2); // ~bruno and ~maya
     assert!(burrows.iter().all(|b| b.name.starts_with('~')));
     assert!(burrows.iter().all(|b| b.entry_type == EntryType::Directory));
 }
 
-#[test]
-fn list_burrows_sorted_alphabetically() {
-    let burrows = list_burrows();
+#[tokio::test]
+async fn list_burrows_sorted_alphabetically() {
+    let burrows = list_burrows().await;
     let names: Vec<&str> = burrows.iter().map(|b| b.name.as_str()).collect();
     let mut sorted = names.clone();
     sorted.sort();
@@ -284,19 +284,19 @@ fn list_burrows_sorted_alphabetically() {
 
 // ── list_directory tests ────────────────────────────────────────
 
-#[test]
-fn list_directory_skips_hidden_files() {
-    let root = fs::canonicalize("burrows").unwrap();
-    let dir = fs::canonicalize("burrows/~bruno").unwrap();
-    let entries = list_directory(&dir, &root);
+#[tokio::test]
+async fn list_directory_skips_hidden_files() {
+    let root = tokio::fs::canonicalize("burrows").await.unwrap();
+    let dir = tokio::fs::canonicalize("burrows/~bruno").await.unwrap();
+    let entries = list_directory(&dir, &root).await;
     assert!(entries.iter().all(|e| !e.name.starts_with('.')));
 }
 
-#[test]
-fn list_directory_sorts_dirs_first() {
-    let root = fs::canonicalize("burrows").unwrap();
-    let dir = fs::canonicalize("burrows/~bruno").unwrap();
-    let entries = list_directory(&dir, &root);
+#[tokio::test]
+async fn list_directory_sorts_dirs_first() {
+    let root = tokio::fs::canonicalize("burrows").await.unwrap();
+    let dir = tokio::fs::canonicalize("burrows/~bruno").await.unwrap();
+    let entries = list_directory(&dir, &root).await;
     let dir_count = entries.iter().filter(|e| e.entry_type == EntryType::Directory).count();
     for (i, e) in entries.iter().enumerate() {
         if e.entry_type == EntryType::Directory {
@@ -305,11 +305,11 @@ fn list_directory_sorts_dirs_first() {
     }
 }
 
-#[test]
-fn list_directory_includes_file_sizes() {
-    let root = fs::canonicalize("burrows").unwrap();
-    let dir = fs::canonicalize("burrows/~bruno").unwrap();
-    let entries = list_directory(&dir, &root);
+#[tokio::test]
+async fn list_directory_includes_file_sizes() {
+    let root = tokio::fs::canonicalize("burrows").await.unwrap();
+    let dir = tokio::fs::canonicalize("burrows/~bruno").await.unwrap();
+    let entries = list_directory(&dir, &root).await;
     let files: Vec<_> = entries.iter().filter(|e| e.entry_type == EntryType::Text).collect();
     assert!(files.iter().all(|f| f.meta.contains("B") || f.meta.contains("KB")));
 }

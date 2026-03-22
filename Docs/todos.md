@@ -32,7 +32,7 @@
 - [x] Content limits enforcement (64 KB max file, 256 files/dir, 8 levels depth)
 - [x] Directory `.burrow` config: `title` support (sort/pin pending)
 - [x] Server stats endpoint or CLI command
-- [ ] `tokio::fs` migration (async filesystem reads under load)
+- [x] `tokio::fs` migration (async filesystem reads under load)
 - [x] Static asset serving (favicon, robots.txt)
 - [x] Rate limiting on guestbook POST
 - [x] Access logging (structured, optional)
@@ -41,34 +41,34 @@
 
 - [x] `burrow switch` — multi-user CLI (switch active burrow)
 - [x] `burrow preview` — local draft preview before publishing
-- [ ] `burrow push` / `burrow pull` — remote sync (requires auth)
-- [ ] `burrow search` — CLI search via Veronica-NG
+- [x] `burrow push` / `burrow pull` — remote sync via rsync/SSH
+- [x] `burrow search` — local grep-based search with highlighting
 
 ## Rings (webrings)
 
-- [ ] `.ring` file format (title, description, members list)
-- [ ] Ring navigation on pages (← Previous · Ring Name · Next →)
-- [ ] Ring creation via CLI (`burrow ring create`)
-- [ ] Ring listing on Discover page
-- [ ] Cross-server ring support
+- [x] `.ring` file format (title, description, members list)
+- [x] Ring navigation on pages (← Previous · Ring Name · Next →)
+- [x] Ring creation via CLI (`burrow ring create/add/remove/show/list`)
+- [x] Ring listing on Discover page + dedicated `/rings` page
+- [x] Cross-server ring support (`gph://` URLs as members)
 
 ## Veronica-NG (search)
 
-- [ ] Full-text index of public burrow content
-- [ ] Search endpoint (`/search?q=...`)
-- [ ] BM25 ranking + freshness boost
-- [ ] Search operators: `author:`, `server:`, `ring:`, `fresh:`, `type:`
-- [ ] Search UI in the gateway
-- [ ] Federation: voluntary index submission to relay nodes
+- [x] Full-text index of public burrow content (in-memory inverted index, built on startup)
+- [x] Search endpoint (`/search?q=...`)
+- [x] BM25 ranking + freshness boost (90-day decay, title boost)
+- [x] Search operators: `author:`, `fresh:`, `type:`
+- [x] Search UI in the gateway (Veronica-NG page with search box + styled results)
+- [x] Federation: `/search/index.json` export endpoint
 
 ## Discovery & social
 
-- [ ] Discover page (`/discover/`) — trending, most-bookmarked, random burrow
+- [x] Discover page (`/discover/`) — latest posts, random spotlight, all burrows
 - [x] Firehose (`/firehose/`) — chronological stream of all new publications
-- [ ] Public bookmarks per user (`/~user/bookmarks/`)
-- [ ] Bookmark counts as search ranking signal
+- [x] Public bookmarks per user (`/~user/bookmarks`)
+- [x] Bookmark counts as discover ranking signal (★ Most bookmarked section)
 - [x] Random burrow feature on discover page
-- [ ] Burrow-to-burrow ping (cross-reference notifications)
+- [x] Burrow-to-burrow ping (← "Mentioned by" on posts)
 
 ## Feed / timeline
 
@@ -80,22 +80,22 @@
 
 - [x] `.gph` rendering in directory listing descriptions (currently plaintext only)
 - [x] Burrow theming — per-burrow accent color via `.burrow` config
-- [ ] ASCII art gallery (`/gallery/`)
+- [x] ASCII art gallery (`/~user/gallery/`)
 - [x] Reading time estimate (word count / 250 wpm, shown briefly)
-- [ ] Yearly `timecapsule.txt` generation
-- [ ] Image/binary file serving (paid tier)
+- [x] Yearly `timecapsule.txt` generation (`burrow timecapsule [year]`)
+- [x] Image/binary file serving (PNG, JPEG, GIF, SVG, WebP, PDF, audio, fonts, archives — 2 MB limit)
 
 ## Protocol
 
-- [ ] Gemini bridge (`gemini://` serving, `.gph` → `.gmi` conversion)
-- [ ] TLS support (native or Let's Encrypt auto-config)
+- [x] Gemini bridge (`gemini://` serving, `.gph` → `.gmi` conversion, TLS listener on configurable port)
+- [x] TLS support (native rustls, manual cert via `tls_cert`/`tls_key` in burrow.conf)
 - [ ] Custom domain support (paid tier)
-- [ ] `gph://` protocol handler registration
+- [x] `gph://` protocol handler (`burrow register` + `burrow open`)
 
 ## Infrastructure
 
 - [x] Docker image / `docker-compose.yml`
-- [ ] Self-hosting one-liner install script
+- [x] Self-hosting one-liner install script
 - [x] Systemd service file
 - [x] Backup / export tool
 - [x] Health check endpoint

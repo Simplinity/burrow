@@ -1,0 +1,14 @@
+# Coffee
+
+        ( (
+         ) )
+      .─────────.
+      |  ~  ~  ~ |
+      |  COFFEE  |
+      |  ~  ~  ~ |
+      `──┬───┬──'
+         │   │
+    ─────┴───┴─────
+
+  best debugging tool
+  since printf

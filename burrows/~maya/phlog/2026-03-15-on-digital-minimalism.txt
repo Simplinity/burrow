@@ -15,3 +15,5 @@ Burrow is the first platform I've used in years that doesn't try to tell me what
 No templates. No getting started wizard. No AI writing assistant. Just an empty folder with my name on it.
 
 The emptiness is not a bug. It is the feature.
+
+/~bruno/phlog/2026-03-10-the-weight-of-a-webpage   Bruno wrote about this too

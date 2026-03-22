@@ -5,6 +5,9 @@ use std::path::Path;
 pub struct ServerConfig {
     pub domain: String,
     pub port: u16,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
+    pub gemini_port: Option<u16>,
 }
 
 impl Default for ServerConfig {
@@ -12,11 +15,26 @@ impl Default for ServerConfig {
         Self {
             domain: "localhost".to_string(),
             port: 7070,
+            tls_cert: None,
+            tls_key: None,
+            gemini_port: None,
         }
     }
 }
 
 impl ServerConfig {
+    pub fn has_tls(&self) -> bool {
+        self.tls_cert.is_some() && self.tls_key.is_some()
+    }
+
+    pub fn has_gemini(&self) -> bool {
+        self.gemini_port.is_some() && self.has_tls()
+    }
+
+    pub fn gemini_bind_addr(&self) -> Option<String> {
+        self.gemini_port.map(|p| format!("127.0.0.1:{}", p))
+    }
+
     pub fn load() -> Self {
         Self::load_from(Path::new("burrow.conf"))
     }
@@ -39,6 +57,20 @@ impl ServerConfig {
             } else if let Some(val) = line.strip_prefix("port = ") {
                 if let Ok(p) = val.trim().parse() {
                     config.port = p;
+                }
+            } else if let Some(val) = line.strip_prefix("tls_cert = ") {
+                let path = val.trim().to_string();
+                if !path.is_empty() {
+                    config.tls_cert = Some(path);
+                }
+            } else if let Some(val) = line.strip_prefix("tls_key = ") {
+                let path = val.trim().to_string();
+                if !path.is_empty() {
+                    config.tls_key = Some(path);
+                }
+            } else if let Some(val) = line.strip_prefix("gemini_port = ") {
+                if let Ok(p) = val.trim().parse() {
+                    config.gemini_port = Some(p);
                 }
             }
         }

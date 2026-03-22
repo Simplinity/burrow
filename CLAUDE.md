@@ -61,4 +61,6 @@ Docs/          Project documentation
 
 - [Docs/burrowd-manual.md](Docs/burrowd-manual.md) — Server manual (man page style)
 - [Docs/CHANGELOG.md](Docs/CHANGELOG.md) — Version history
+- [Docs/architecture.md](Docs/architecture.md) — System architecture and design
 - [Docs/burrow-concept.md](Docs/burrow-concept.md) — Product vision and roadmap
+- [Docs/todos.md](Docs/todos.md) — Feature backlog and progress

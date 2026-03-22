@@ -1,2 +1,4 @@
 /target
 .burrow-active
+.DS_Store
+.claude/

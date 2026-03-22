@@ -1,4 +1,4 @@
-use crate::{BurrowEntry, EntryType};
+use crate::{BurrowEntry, EntryType, GuestbookEntry};
 
 const CSS: &str = r#"
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Literata:ital,wght@0,400;0,500;1,400&display=swap');
@@ -58,6 +58,11 @@ fn head(title: &str, addr: &str, domain: &str) -> String {
     let title = html_escape(title);
     let addr = html_escape(addr);
     let domain = html_escape(domain);
+    // Extract burrow name from addr for RSS feed link (e.g. "/~bruno/phlog" → "/~bruno/feed.xml")
+    let rss_href = addr.split('/').nth(1)
+        .filter(|s| s.starts_with('~'))
+        .map(|b| format!("/{}/feed.xml", b))
+        .unwrap_or_else(|| "/feed.xml".to_string());
     format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -65,6 +70,7 @@ fn head(title: &str, addr: &str, domain: &str) -> String {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title} — Burrow</title>
 <style>{CSS}</style>
+<link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{rss_href}">
 </head>
 <body>
 <div class="topbar">
@@ -179,15 +185,14 @@ pub fn text_page(path: &str, filename: &str, content: &str, domain: &str) -> Str
 </div>
 </div>"#));
     html.push_str(&footer(domain));
-    let html = html.replace("</body></html>", r#"<script>
+    html.replace("</body></html>", r#"<script>
 window.addEventListener('scroll',()=>{
   const h=document.documentElement;
   const pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
   document.getElementById('prog').style.width=pct+'%';
 });
 </script>
-</body></html>"#);
-    html
+</body></html>"#)
 }
 
 pub fn not_found_page(path: &str, domain: &str) -> String {
@@ -197,6 +202,60 @@ pub fn not_found_page(path: &str, domain: &str) -> String {
 <p>This hole leads nowhere.<br>Most holes do. That's the charm.</p>
 <p style="margin-top:24px;"><a href="/">← Back to the surface</a></p>
 </div>"#);
+    html.push_str(&footer(domain));
+    html
+}
+
+pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str) -> String {
+    let crumbs = build_crumbs(path, domain);
+    let burrow_name = path.split('/').next().unwrap_or(path);
+
+    let mut html = head("Guestbook", &format!("/{}", path), domain);
+    html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
+<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
+<div class="reading">
+<h1>Guestbook</h1>
+<div class="meta">{}'s guestbook · {} entries</div>
+
+<form method="post" style="margin:24px 0 32px;padding:20px;background:var(--faint);border-radius:8px;">
+  <div style="margin-bottom:12px;">
+    <label style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Name</label>
+    <input name="name" required maxlength="40" placeholder="Anonymous gopher"
+      style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--faint);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text);">
+  </div>
+  <div style="margin-bottom:12px;">
+    <label style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Message</label>
+    <textarea name="message" required maxlength="500" rows="3" placeholder="Leave your mark..."
+      style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--faint);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text);resize:vertical;"></textarea>
+  </div>
+  <button type="submit"
+    style="padding:8px 20px;background:var(--accent);color:var(--surface);border:none;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;">Sign the book</button>
+</form>
+"#,
+        html_escape(burrow_name),
+        entries.len(),
+    ));
+
+    if entries.is_empty() {
+        html.push_str(r#"<p style="color:var(--muted);text-align:center;padding:32px 0;">No entries yet. Be the first to sign!</p>"#);
+    } else {
+        for entry in entries.iter().rev() {
+            html.push_str(&format!(
+                r#"<div style="border-bottom:1px solid var(--faint);padding:16px 0;">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;">{}</span>
+  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);">{}</span>
+</div>
+<p style="margin:0;">{}</p>
+</div>"#,
+                html_escape(&entry.name),
+                html_escape(&entry.date),
+                html_escape(&entry.message),
+            ));
+        }
+    }
+
+    html.push_str("</div></div>");
     html.push_str(&footer(domain));
     html
 }

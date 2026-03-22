@@ -1,3 +1,4 @@
+use burrow::config::ServerConfig;
 use chrono::Local;
 use clap::{Parser, Subcommand};
 use std::env;
@@ -37,11 +38,24 @@ enum Commands {
         /// Path to file (e.g. "about.txt" or "phlog/my-post.txt")
         path: String,
     },
+    /// Manage your guestbook
+    Guestbook {
+        #[command(subcommand)]
+        command: GuestbookCommands,
+    },
     /// Server management
     Server {
         #[command(subcommand)]
         command: ServerCommands,
     },
+}
+
+#[derive(Subcommand)]
+enum GuestbookCommands {
+    /// Create a guestbook for your burrow
+    Init,
+    /// Show recent guestbook entries
+    Show,
 }
 
 #[derive(Subcommand)]
@@ -60,16 +74,35 @@ enum ServerCommands {
 fn main() {
     let cli = Cli::parse();
     let burrows_root = find_burrows_root();
+    let cfg = load_server_url(&burrows_root);
 
     match cli.command {
-        Commands::Init { name } => cmd_init(&burrows_root, &name),
-        Commands::New { title } => cmd_new(&burrows_root, &title),
+        Commands::Init { name } => cmd_init(&burrows_root, &name, &cfg),
+        Commands::New { title } => cmd_new(&burrows_root, &title, &cfg),
         Commands::Ls { path } => cmd_ls(&burrows_root, path.as_deref()),
-        Commands::Status => cmd_status(&burrows_root),
+        Commands::Status => cmd_status(&burrows_root, &cfg),
+        Commands::Guestbook { command } => match command {
+            GuestbookCommands::Init => cmd_guestbook_init(&burrows_root),
+            GuestbookCommands::Show => cmd_guestbook_show(&burrows_root),
+        },
         Commands::Server { command } => match command {
             ServerCommands::Init { domain, port } => cmd_server_init(&burrows_root, &domain, port),
         },
         Commands::Edit { path } => cmd_edit(&burrows_root, &path),
+    }
+}
+
+fn load_server_url(burrows_root: &Path) -> String {
+    let conf_path = burrows_root.parent().unwrap_or(Path::new(".")).join("burrow.conf");
+    if conf_path.exists() {
+        let cfg = ServerConfig::load_from(&conf_path);
+        if cfg.domain == "localhost" {
+            format!("http://localhost:{}", cfg.port)
+        } else {
+            format!("https://{}", cfg.domain)
+        }
+    } else {
+        "http://localhost:7070".to_string()
     }
 }
 
@@ -130,7 +163,7 @@ fn burrow_path(burrows_root: &Path, name: &str) -> PathBuf {
 
 // ── Commands ────────────────────────────────────────────────────
 
-fn cmd_init(burrows_root: &Path, name: &str) {
+fn cmd_init(burrows_root: &Path, name: &str, server_url: &str) {
     let name = if name.starts_with('~') {
         name.to_string()
     } else {
@@ -151,7 +184,7 @@ fn cmd_init(burrows_root: &Path, name: &str) {
     // .burrow config
     fs::write(
         root.join(".burrow"),
-        format!("description = A fresh burrow\n"),
+        "description = A fresh burrow\n",
     )
     .unwrap();
 
@@ -172,14 +205,14 @@ fn cmd_init(burrows_root: &Path, name: &str) {
     println!("    about.txt");
     println!("    phlog/");
     println!();
-    println!("  Your burrow is live at \x1b[36mhttp://127.0.0.1:7070/{}\x1b[0m", name);
+    println!("  Your burrow is live at \x1b[36m{}/{}\x1b[0m", server_url, name);
     println!();
     println!("  Write your first post:");
     println!("    \x1b[1mburrow new \"My first post\"\x1b[0m");
     println!();
 }
 
-fn cmd_new(burrows_root: &Path, title: &str) {
+fn cmd_new(burrows_root: &Path, title: &str, server_url: &str) {
     let name = require_active_burrow(burrows_root);
     let root = burrow_path(burrows_root, &name);
     let phlog_dir = root.join("phlog");
@@ -223,7 +256,8 @@ fn cmd_new(burrows_root: &Path, title: &str) {
                 println!("  Empty post discarded.");
             } else {
                 println!(
-                    "  \x1b[32mPublished!\x1b[0m View at \x1b[36mhttp://127.0.0.1:7070/{}/phlog/{}\x1b[0m",
+                    "  \x1b[32mPublished!\x1b[0m View at \x1b[36m{}/{}/phlog/{}\x1b[0m",
+                    server_url,
                     name,
                     filename.trim_end_matches(".txt")
                 );
@@ -303,7 +337,7 @@ fn cmd_ls(burrows_root: &Path, path: Option<&str>) {
     println!();
 }
 
-fn cmd_status(burrows_root: &Path) {
+fn cmd_status(burrows_root: &Path, server_url: &str) {
     let name = require_active_burrow(burrows_root);
     let root = burrow_path(burrows_root, &name);
 
@@ -330,7 +364,7 @@ fn cmd_status(burrows_root: &Path) {
     println!();
     println!("  Files:    {}", file_count);
     println!("  Size:     {} / 1 MB \x1b[90m({:.0}%)\x1b[0m", size_str, pct);
-    println!("  Server:   \x1b[36mhttp://127.0.0.1:7070/{}\x1b[0m", name);
+    println!("  Server:   \x1b[36m{}/{}\x1b[0m", server_url, name);
     println!();
 
     // Show phlog post count if phlog exists
@@ -390,6 +424,21 @@ fn cmd_edit(burrows_root: &Path, path: &str) {
 }
 
 fn cmd_server_init(burrows_root: &Path, domain: &str, port: u16) {
+    // Validate domain
+    let domain = domain.trim();
+    if domain.is_empty() {
+        eprintln!("  Domain cannot be empty.");
+        std::process::exit(1);
+    }
+    if domain.contains("://") {
+        eprintln!("  Domain should not include a protocol (e.g. use \"myblog.com\" not \"https://myblog.com\").");
+        std::process::exit(1);
+    }
+    if domain.contains(' ') {
+        eprintln!("  Domain cannot contain spaces.");
+        std::process::exit(1);
+    }
+
     // Create burrows directory if it doesn't exist
     if !burrows_root.exists() {
         fs::create_dir_all(burrows_root).unwrap();
@@ -398,18 +447,20 @@ fn cmd_server_init(burrows_root: &Path, domain: &str, port: u16) {
     // Write burrow.conf next to the burrows/ directory
     let conf_path = burrows_root.parent().unwrap_or(Path::new(".")).join("burrow.conf");
 
-    if conf_path.exists() {
-        eprintln!("  burrow.conf already exists. Overwriting...");
-    }
+    let existed = conf_path.exists();
 
-    let content = format!(
-        "# Burrow server configuration\n# Generated by: burrow server init\n\ndomain = {}\nport = {}\n",
-        domain, port
-    );
-    fs::write(&conf_path, content).unwrap();
+    let cfg = ServerConfig {
+        domain: domain.to_string(),
+        port,
+    };
+    cfg.save(&conf_path);
 
     println!();
-    println!("  \x1b[1m/\x1b[0m Server configured.");
+    if existed {
+        println!("  \x1b[1m/\x1b[0m Server reconfigured.");
+    } else {
+        println!("  \x1b[1m/\x1b[0m Server configured.");
+    }
     println!();
     println!("  Domain:  \x1b[36m{}\x1b[0m", domain);
     println!("  Port:    \x1b[36m{}\x1b[0m", port);
@@ -417,6 +468,81 @@ fn cmd_server_init(burrows_root: &Path, domain: &str, port: u16) {
     println!();
     println!("  Start the server:");
     println!("    \x1b[1mburrowd\x1b[0m");
+    println!();
+}
+
+fn cmd_guestbook_init(burrows_root: &Path) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+    let guestbook = root.join("guestbook.gph");
+
+    if guestbook.exists() {
+        eprintln!("  Guestbook already exists for {}.", name);
+        std::process::exit(1);
+    }
+
+    fs::write(&guestbook, "").unwrap();
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Guestbook created for {}.", name);
+    println!();
+    println!("  Visitors can sign it at \x1b[36m/{}/guestbook\x1b[0m", name);
+    println!();
+}
+
+fn cmd_guestbook_show(burrows_root: &Path) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+    let guestbook = root.join("guestbook.gph");
+
+    if !guestbook.exists() {
+        eprintln!("  No guestbook found. Run `burrow guestbook init` first.");
+        std::process::exit(1);
+    }
+
+    let content = fs::read_to_string(&guestbook).unwrap_or_default();
+    if content.trim().is_empty() {
+        println!();
+        println!("  \x1b[90mNo entries yet. Share the link!\x1b[0m");
+        println!();
+        return;
+    }
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Guestbook — {}", name);
+    println!();
+
+    let mut count = 0;
+    let mut current_name = String::new();
+    let mut current_date = String::new();
+    let mut current_msg = String::new();
+
+    let print_entry = |name: &str, date: &str, msg: &str, count: &mut usize| {
+        if !name.is_empty() {
+            *count += 1;
+            println!("  \x1b[36m{}\x1b[0m  \x1b[90m{}\x1b[0m", name, date);
+            println!("  {}", msg.trim());
+            println!();
+        }
+    };
+
+    for line in content.lines() {
+        if let Some(rest) = line.strip_prefix("--- ") {
+            print_entry(&current_name, &current_date, &current_msg, &mut count);
+            let parts: Vec<&str> = rest.splitn(2, " · ").collect();
+            current_name = parts.first().unwrap_or(&"").to_string();
+            current_date = parts.get(1).unwrap_or(&"").to_string();
+            current_msg = String::new();
+        } else if !current_name.is_empty() {
+            if !current_msg.is_empty() {
+                current_msg.push('\n');
+            }
+            current_msg.push_str(line);
+        }
+    }
+    print_entry(&current_name, &current_date, &current_msg, &mut count);
+
+    println!("  \x1b[90m{} entries total\x1b[0m", count);
     println!();
 }
 

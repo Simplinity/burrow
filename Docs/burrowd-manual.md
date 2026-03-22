@@ -62,6 +62,8 @@ When someone visits `http://yourserver:7070/~alice/phlog/2026-03-20-hello-world`
 | `/~alice` | Directory listing of Alice's burrow |
 | `/~alice/about` | Renders `about.txt` (yes, `.txt` is auto-appended) |
 | `/~alice/phlog/` | Directory listing of Alice's phlog |
+| `/~alice/guestbook` | Guestbook with a form to sign (see GUESTBOOK below) |
+| `/~alice/feed.xml` | Auto-generated RSS feed of Alice's phlog (see RSS below) |
 | `/nonexistent` | A 404 page with existential undertones |
 
 ### Content Format
@@ -192,7 +194,56 @@ We take security seriously, even if we don't take much else seriously:
 - **Path traversal protection**: All paths are canonicalized and verified to stay inside `burrows/`. Your `../../etc/passwd` jokes won't work here. We've heard them all.
 - **HTML escaping**: All user content is escaped before rendering. Both in text content (`<` → `&lt;`) and in URL attributes (`"` → `&quot;`). XSS is not a feature.
 - **File size limit**: 1 MB maximum per file. If your plaintext file is over 1 MB, you may be writing a novel. We respect that, but we won't serve it.
-- **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person.
+- **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person. (The guestbook form is the one exception — it appends text to a single file. We had a long meeting about this. The votes were 3-2.)
+
+## GUESTBOOK
+
+Every burrow can have a guestbook. Because it's not the '90s internet without one.
+
+```bash
+# Create a guestbook for your burrow
+burrow guestbook init
+```
+
+This creates a `guestbook.gph` file in your burrow. Visitors can sign it at `/~yourname/guestbook` — there's a form, it works, no JavaScript required. (The form is plain HTML. We checked.)
+
+Entries are stored as plaintext in the file itself:
+
+```
+--- Nostalgic Gopher · 2026-03-22 01:56
+Your site loads faster than my thoughts. Respect.
+
+--- Anonymous · 2026-03-22 14:30
+I haven't seen a guestbook since GeoCities. I'm not crying, you're crying.
+```
+
+**Limits** — because the internet is why we can't have nice things:
+
+| Thing | Limit |
+|-------|-------|
+| Name length | 40 characters |
+| Message length | 500 characters |
+| Total entries | 200 per guestbook |
+| Format injection | `---` in input is replaced with `—` |
+
+View entries from the CLI:
+
+```bash
+burrow guestbook show
+```
+
+## RSS
+
+Every burrow automatically gets an RSS feed. No configuration needed. No plugins. No "install the RSS extension." It just works, like things used to.
+
+```
+/~alice/feed.xml    ← full RSS 2.0 XML feed
+/~alice/feed        ← same thing, for the lazy typist
+```
+
+The feed includes all `.txt` posts from the `phlog/` directory, sorted newest first, with a content preview. Your favorite RSS reader (you have one, right? *Right?*) will auto-discover it via the `<link rel="alternate">` tag in every page's `<head>`.
+
+The feed uses whatever domain you configured with `burrow server init`. If you're still on `localhost`, the feed URLs will say `http://localhost:7070`. If you set a domain, they'll say `https://yourdomain.com`. We assume HTTPS because it's 2026 and you're not a barbarian.
 
 ## THE ADDRESS BAR
 
@@ -208,6 +259,7 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
 | Config options | 2 | See "Configuration" above. We meant it. |
+| POST endpoints | 1 (guestbook) | We agonized over this. |
 
 ## TROUBLESHOOTING
 
@@ -234,6 +286,7 @@ A: No. The design is the design. We spent time on it. It has a light mode and a 
 - `burrow(1)` — the CLI companion for creating and managing content
 - `burrow-concept.md` — the full vision document (warning: contains ambition)
 - Your favorite text editor — the real authoring tool
+- Your favorite RSS reader — for subscribing to `/~user/feed.xml`
 - RFC 1436 — the Gopher protocol spec, for historical context and mild nostalgia
 
 ## AUTHORS
@@ -242,7 +295,7 @@ Built with Rust, Axum, and a stubborn belief that the internet should be readabl
 
 ## COLOPHON
 
-No JavaScript frameworks were harmed in the making of this server. One scroll event listener was reluctantly employed. It has been given a performance review and is on probation.
+No JavaScript frameworks were harmed in the making of this server. One scroll event listener was reluctantly employed. It has been given a performance review and is on probation. One HTML `<form>` was admitted for the guestbook. It behaves itself.
 
 The fonts (JetBrains Mono and Literata) do more heavy lifting than the entire backend. We're okay with that. Typography is important. Your words deserve to look good.
 

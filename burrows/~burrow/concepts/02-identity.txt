@@ -9,8 +9,8 @@ The tilde is a direct homage to Unix home directories and the tilde clubs of the
 Your burrow address carries two pieces of information:
 
   gph://phlogosphere.net/~bruno
-         ^                 ^
-         the community     you
+        |                |
+        the community    you
 
 This is like email. bruno@gmail.com and bruno@proton.me are different contexts, different communities, same person. You can have burrows on multiple servers. You can self-host. The protocol doesn't care who you are — only where your files are.
 

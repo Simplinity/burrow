@@ -138,12 +138,12 @@ pub fn home_page(burrows: &[BurrowEntry], domain: &str) -> String {
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
 <div class="crumbs"><a href="/">{}</a> /</div>
 <h1>{}</h1>
-<div class="subtitle">Community burrow server — {} burrows</div>
+<div class="subtitle">Community burrow server — {}</div>
 {}</div></div>"#,
         sidebar("/", burrows),
         html_escape(domain),
         html_escape(domain),
-        burrows.len(),
+        if burrows.len() == 1 { "1 burrow".to_string() } else { format!("{} burrows", burrows.len()) },
         render_entries(burrows),
     ));
     html.push_str(&footer(domain));

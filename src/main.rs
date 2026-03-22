@@ -148,7 +148,7 @@ pub fn list_burrows() -> Vec<BurrowEntry> {
                     name: format!("{}/", name),
                     entry_type: EntryType::Directory,
                     description: desc,
-                    meta: format!("{} items", count),
+                    meta: if count == 1 { "1 item".to_string() } else { format!("{} items", count) },
                 });
             }
         }
@@ -179,7 +179,7 @@ fn list_directory(dir: &path::Path, burrows_root: &path::Path) -> Vec<BurrowEntr
                     name: format!("{}/", name),
                     entry_type: EntryType::Directory,
                     description: desc,
-                    meta: format!("{} items", count),
+                    meta: if count == 1 { "1 item".to_string() } else { format!("{} items", count) },
                 });
             } else {
                 let size = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);

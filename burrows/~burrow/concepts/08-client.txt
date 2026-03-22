@@ -71,4 +71,5 @@ The CLI is already built and shipping. It's the power-user path. Everything the 
 
 ---
 
+/~burrow/concepts/07-design   ← How It Looks
 /~burrow/concepts/09-federation   How servers talk to each other →

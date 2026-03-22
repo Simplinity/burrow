@@ -61,4 +61,5 @@ This model is simple, robust, and impossible to capture. No single entity can ow
 
 ---
 
+/~burrow/concepts/08-client   ← The Apps
 /~burrow/concepts/10-business   How this stays alive →

@@ -46,4 +46,5 @@ The firehose is the anti-algorithm. And the random burrow link on the Discover p
 
 ---
 
+/~burrow/concepts/05-social   ← The Philosophy of Less
 /~burrow/concepts/07-design   How it looks (and why) →

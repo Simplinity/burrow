@@ -40,4 +40,5 @@ No venture capital. No growth-at-all-costs. No pivot to enterprise. Just a small
 
 ---
 
+/~burrow/concepts/09-federation   ← How Servers Talk
 /~burrow/concepts/11-future   Where this is going →

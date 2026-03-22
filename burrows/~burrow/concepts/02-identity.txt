@@ -32,4 +32,5 @@ No export tool. No "Download Your Data" button that gives you a useless JSON blo
 
 ---
 
+/~burrow/concepts/01-manifesto   ← The Manifesto
 /~burrow/concepts/03-protocol   The protocol that fits on a napkin →

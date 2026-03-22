@@ -54,4 +54,5 @@ That's what the internet was before we complicated it.
 
 ---
 
+/~burrow/concepts/04-markup   ← Writing in .gph
 /~burrow/concepts/06-discovery   Finding things worth reading →

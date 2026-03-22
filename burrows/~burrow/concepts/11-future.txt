@@ -34,5 +34,6 @@ The answer is in the name. A burrow is small, warm, and yours. That's always bee
 
 Now go write something.
 
+/~burrow/concepts/10-business   ← How This Stays Alive
 /~burrow/concepts/01-manifesto   Back to the beginning →
 /~burrow/server/01-getting-started   Start running a server →

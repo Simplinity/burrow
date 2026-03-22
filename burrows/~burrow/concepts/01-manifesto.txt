@@ -24,4 +24,5 @@ Burrow is a hole in the ground. It's small, it's warm, and it's yours.
 
 ---
 
+/~burrow/   ← Home
 /~burrow/concepts/02-identity   What's in a name →

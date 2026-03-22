@@ -66,4 +66,5 @@ If you use Burrow for a week and someone asks what it looks like, the answer sho
 
 ---
 
+/~burrow/concepts/06-discovery   ← Finding Things Worth Reading
 /~burrow/concepts/08-client   The apps (coming soon) →

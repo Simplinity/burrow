@@ -45,4 +45,5 @@ No client yet? No problem. The HTTPS gateway serves everyone. The native protoco
 
 ---
 
+/~burrow/concepts/02-identity   ← Identity Is a Path
 /~burrow/concepts/04-markup   Writing in .gph →

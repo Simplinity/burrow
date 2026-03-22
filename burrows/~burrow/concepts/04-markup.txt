@@ -57,4 +57,5 @@ The result: any .gph file is perfectly readable in any text editor, on any syste
 
 ---
 
+/~burrow/concepts/03-protocol   ← The Protocol
 /~burrow/concepts/05-social   The philosophy of less →

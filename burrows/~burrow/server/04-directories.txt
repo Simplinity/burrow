@@ -28,5 +28,5 @@ The config format is deliberately flat. No nesting. No YAML. No TOML sections. N
 
 There are exactly ten config keys in the entire system: five for the server, five per directory. The full configuration of a Burrow deployment fits in a tweet. We consider this a feature.
 
-/~burrow/manual/03-drafts   ← Drafts & Publishing
-/~burrow/manual/05-guestbook   Next: Guestbook →
+/~burrow/server/03-drafts   ← Drafts & Publishing
+/~burrow/server/05-guestbook   Next: Guestbook →

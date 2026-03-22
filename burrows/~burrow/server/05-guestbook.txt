@@ -42,5 +42,5 @@ Read entries from the terminal:
 
 They print with name, date, and message. It's like checking the visitor book at a museum, except the museum is your personal corner of the internet and the visitors are strangers who care about plaintext.
 
-/~burrow/manual/04-directories   ← Directories & Config
-/~burrow/manual/06-bookmarks   Next: Bookmarks →
+/~burrow/server/04-directories   ← Directories & Config
+/~burrow/server/06-bookmarks   Next: Bookmarks →

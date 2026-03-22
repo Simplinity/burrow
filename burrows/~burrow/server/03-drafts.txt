@@ -32,5 +32,5 @@ This renders the .gph markup with terminal colors: headings bold, quotes italic,
 
 Files starting with . are also hidden and blocked. The .burrow config file uses this. You probably shouldn't name your posts with a dot prefix unless you're making a philosophical statement about the hidden nature of all writing.
 
-/~burrow/manual/02-writing   ← Writing in Burrow
-/~burrow/manual/04-directories   Next: Directories & Config →
+/~burrow/server/02-writing   ← Writing in Burrow
+/~burrow/server/04-directories   Next: Directories & Config →

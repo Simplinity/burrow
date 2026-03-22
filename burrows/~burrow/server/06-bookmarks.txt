@@ -30,5 +30,5 @@ Visit /~yourname/bookmarks to see anyone's public bookmarks. They render with a 
 
 Think of bookmarks as your public library card. The books you check out say more about you than your bio ever could.
 
-/~burrow/manual/05-guestbook   ← Guestbook
-/~burrow/manual/07-rings   Next: Rings →
+/~burrow/server/05-guestbook   ← Guestbook
+/~burrow/server/07-rings   Next: Rings →

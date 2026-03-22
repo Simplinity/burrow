@@ -41,5 +41,5 @@ That's it. The entire format fits on an index card. The entire format will still
 
 What's deliberately missing: bold, italic, tables, inline links, images, emoji shortcodes, and anything that would make you think about formatting instead of thinking about what you're writing.
 
-/~burrow/manual/01-getting-started   ← Getting Started
-/~burrow/manual/03-drafts   Next: Drafts & Publishing →
+/~burrow/server/01-getting-started   ← Getting Started
+/~burrow/server/03-drafts   Next: Drafts & Publishing →

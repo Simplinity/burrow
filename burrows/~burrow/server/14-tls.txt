@@ -33,5 +33,5 @@ The security model is simple because the attack surface is small. burrowd serves
 
 The most dangerous thing it does is append a line to a guestbook file. We had a very long meeting about that.
 
-/~burrow/manual/13-gemini   ← Gemini
-/~burrow/manual/15-deployment   Next: Deployment →
+/~burrow/server/13-gemini   ← Gemini
+/~burrow/server/15-deployment   Next: Deployment →

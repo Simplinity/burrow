@@ -42,5 +42,5 @@ Or the hard way:
 
 Both work. Both show your about.txt rendered as Gemtext. Neither required you to change a single character of your content.
 
-/~burrow/manual/12-feeds   ← Feeds
-/~burrow/manual/14-tls   Next: TLS & Security →
+/~burrow/server/12-feeds   ← Feeds
+/~burrow/server/14-tls   Next: TLS & Security →

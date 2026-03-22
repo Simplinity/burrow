@@ -37,5 +37,5 @@ For federation, burrowd exposes /search/index.json — a full document index tha
 
 No crawling. No scraping. No robots.txt negotiations. Just a JSON file. Federation by URL. The simplest model that could possibly work.
 
-/~burrow/manual/07-rings   ← Rings
-/~burrow/manual/09-discover   Next: Discover & Firehose →
+/~burrow/server/07-rings   ← Rings
+/~burrow/server/09-discover   Next: Discover & Firehose →

@@ -48,5 +48,5 @@ A burrow is small, warm, and yours. That's always been the promise of the person
 
   Now go write something.
 
-/~burrow/manual/16-cli   ← CLI Reference
+/~burrow/server/16-cli   ← CLI Reference
 /~burrow/about   ← Back to about

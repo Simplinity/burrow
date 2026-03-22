@@ -36,5 +36,5 @@ The entire federation model is "federation by URL." Servers don't need to know a
 
 No ActivityPub. No Mastodon compatibility layer. No protocol negotiation. Just HTTP POST with two form fields. If that's not simple enough, we'll accept carrier pigeons.
 
-/~burrow/manual/09-discover   ← Discover & Firehose
-/~burrow/manual/11-gallery   Next: Gallery →
+/~burrow/server/09-discover   ← Discover & Firehose
+/~burrow/server/11-gallery   Next: Gallery →

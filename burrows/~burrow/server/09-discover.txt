@@ -30,5 +30,5 @@ Neither /discover nor /firehose uses an algorithm. The ranking on Discover comes
 
 We believe the best recommendation engine is a curious person with free time.
 
-/~burrow/manual/08-search   ← Search
-/~burrow/manual/10-mentions   Next: Mentions & Federation →
+/~burrow/server/08-search   ← Search
+/~burrow/server/10-mentions   Next: Mentions & Federation →

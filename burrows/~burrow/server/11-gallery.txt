@@ -35,5 +35,5 @@ The constraint of plaintext isn't a limitation. It's a creative medium. Ask any 
   │  Unlimited imagination.     │
   └─────────────────────────────┘
 
-/~burrow/manual/10-mentions   ← Mentions & Federation
-/~burrow/manual/12-feeds   Next: Feeds →
+/~burrow/server/10-mentions   ← Mentions & Federation
+/~burrow/server/12-feeds   Next: Feeds →

@@ -29,5 +29,5 @@ Why both RSS and Atom? Because some feed readers prefer RSS 2.0 and some prefer 
 
 What we do care about: your feed is fast. It's a single XML document generated on request from the filesystem. No database query. No cache layer. No CDN. Just read the directory, build the XML, send it. The entire feed response takes single-digit milliseconds.
 
-/~burrow/manual/11-gallery   ← Gallery
-/~burrow/manual/13-gemini   Next: Gemini →
+/~burrow/server/11-gallery   ← Gallery
+/~burrow/server/13-gemini   Next: Gemini →

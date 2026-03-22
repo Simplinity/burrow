@@ -51,5 +51,5 @@ To join someone's ring, you ask them. Out of band. Email. DM. Carrier pigeon. Th
 
 Visit /rings to see all rings on the server. Visit /discover to see them alongside trending posts and bookmarks. The ring navigation appears automatically on every text page of every member.
 
-/~burrow/manual/06-bookmarks   ← Bookmarks
-/~burrow/manual/08-search   Next: Search →
+/~burrow/server/06-bookmarks   ← Bookmarks
+/~burrow/server/08-search   Next: Search →

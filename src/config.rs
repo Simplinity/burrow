@@ -18,7 +18,10 @@ impl Default for ServerConfig {
 
 impl ServerConfig {
     pub fn load() -> Self {
-        let path = Path::new("burrow.conf");
+        Self::load_from(Path::new("burrow.conf"))
+    }
+
+    pub fn load_from(path: &Path) -> Self {
         if !path.exists() {
             return Self::default();
         }

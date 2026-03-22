@@ -12,6 +12,30 @@
 
 ---
 
+## THE BIG PICTURE
+
+Before we talk about config files and port numbers, let's talk about why this exists.
+
+The average web page in 2026 weighs 2.8 MB. It loads 47 trackers, 12 ad networks, and a consent banner more complex than the content you came for. Gopher remembered a better way. In 1991, the University of Minnesota built a protocol so simple it fit on a napkin. Just directories and text. You asked for something, you got it.
+
+Burrow is not a time machine. We're taking the *philosophy* of Gopher — text-first, zero-bloat, human-speed, user-owned — and building it for people who are tired of the modern web but don't want to give up modern UX.
+
+**Identity is a path.** Your address is `gph://server/~you`. The tilde is a direct homage to Unix home directories. Your burrow is not an account in a database — it's a directory on a server. Migration means copying files. Like moving apartments.
+
+**Three protocols, one binary.** HTTPS for the browser crowd (the gateway to the normal world), Gemini for the small-web purists (automatic `.gph` → `.gmi` conversion), and `gph://` for the native clients (coming soon — Tauri desktop, mobile reader). Every protocol serves the same content. burrowd is a polyglot.
+
+**The philosophy of less.** No followers. No likes. No notifications. No comments. No resharing. No DMs. If you appreciate something, bookmark it (public curation) or write a response on your own phlog (public conversation). Both require effort. That's the point. The social dynamics emerge from the content, not from engagement features.
+
+**Discovery without algorithms.** Webrings (human-curated loops of related burrows), public bookmarks (the only ranking signal — how many people saved this?), Veronica-NG full-text search (BM25, same results for everyone, no filter bubble), and the firehose (every post, chronological, anti-algorithmic).
+
+**Federation by URL.** No central server. No ActivityPub. Servers are connected by links, pings (lightweight HTTP POSTs when someone references your work), search index exports (JSON at a URL), and rings that span servers. The simplest model that could possibly work.
+
+**The honest business.** Hosting, not advertising. Free tier has all features, limited storage. Paid tiers add capacity, not capability. Self-hosted is free forever. No venture capital. No growth-at-all-costs. If the company disappears, the software continues. Your files are on your disk.
+
+For the full vision — brand identity, protocol design, the client apps, social mechanics, revenue model, and the 90-day MVP plan — see `burrow-concept.md` or read the in-burrow version at `/~burrow/concepts/`.
+
+---
+
 ## NAME
 
 **burrowd** — a plaintext content server for people who think the web peaked around 1997 but couldn't quite admit it until now.
@@ -272,6 +296,125 @@ RUST_LOG=warn burrowd      # quiet — only problems
 ```
 
 Structured logging via `tracing`. Every request gets a single log line. No log4j. No log rotation daemon. No 50GB `/var/log` surprise.
+
+### Production Hosting (a.k.a. "The Hetzner Guide")
+
+So you want to put this on the real internet. On a real server. Where real people can read your plaintext with their real eyeballs. Here's how.
+
+#### The $4.50/month Setup
+
+A Hetzner CX22 (2 vCPU, 4GB RAM, 40GB SSD) can host thousands of burrows. The entire server uses roughly 15 MB of RAM at idle. Your monitoring stack will use more resources watching burrowd than burrowd uses serving content. This is fine. This is expected. This is the point.
+
+```bash
+# On your shiny new Hetzner box:
+curl -fsSL https://raw.githubusercontent.com/Simplinity/burrow/master/install.sh | bash
+burrow server init --domain phlogosphere.net --port 80
+```
+
+#### Running on Port 80
+
+Port 80 is the "I am a web server" port. It's also a "privileged port" on Linux, meaning only root can bind to it. You have three options, ranked from most to least civilized:
+
+**Option 1: `setcap` (recommended)**
+
+Give the binary permission to bind low ports without running as root:
+
+```bash
+sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+```
+
+One command. No root daemon. No privilege escalation. The binary can bind port 80 and nothing else. This is the Linux equivalent of a bouncer checking IDs — specific, minimal, effective.
+
+**Option 2: systemd socket activation**
+
+Let systemd open port 80 and hand the socket to burrowd. The `burrowd.service` file included in the repo supports this. systemd does the privileged bit; your process runs as a normal user. This is the enterprise-approved approach, which means it works great and is slightly over-engineered for a plaintext server.
+
+**Option 3: iptables redirect**
+
+Run burrowd on 7070 and redirect port 80:
+
+```bash
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7070
+```
+
+This is the "I'll fix it properly later" approach. It works. It's fine. You won't fix it later. That's also fine.
+
+#### Adding HTTPS Later
+
+When you're ready for the green padlock:
+
+```bash
+# Install certbot
+sudo apt install certbot
+
+# Get your cert (burrowd must be stopped briefly, or use webroot)
+sudo certbot certonly --standalone -d phlogosphere.net
+
+# Add to burrow.conf
+echo 'tls_cert = /etc/letsencrypt/live/phlogosphere.net/fullchain.pem' >> burrow.conf
+echo 'tls_key = /etc/letsencrypt/live/phlogosphere.net/privkey.pem' >> burrow.conf
+
+# Change port to 443
+sed -i 's/port = 80/port = 443/' burrow.conf
+
+# Give it permission for port 443 too
+sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+
+# Restart
+systemctl restart burrowd
+```
+
+For the port 80 → 443 redirect, add a one-line iptables rule:
+
+```bash
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 443
+```
+
+Or use Caddy as a redirect-only reverse proxy. Or don't redirect at all — your content is plaintext, and the irony of encrypting a system that philosophically has nothing to hide is not lost on us. But browsers show a scary warning without HTTPS, and we live in a society.
+
+#### The Full Hetzner Speedrun
+
+From zero to live, timed:
+
+```bash
+# 0:00 — SSH into your new box
+ssh root@your.hetzner.ip
+
+# 0:15 — Install
+curl -fsSL https://raw.githubusercontent.com/Simplinity/burrow/master/install.sh | bash
+
+# 0:30 — Configure
+burrow server init --domain phlogosphere.net --port 80
+sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+
+# 0:45 — Create your burrow
+burrow init bruno
+
+# 1:00 — Write your first post
+burrow new "Hello, Gopherspace"
+
+# 1:15 — Enable and start
+sudo cp burrowd.service /etc/systemd/system/
+sudo systemctl enable burrowd
+sudo systemctl start burrowd
+
+# 1:30 — Done. Visit http://phlogosphere.net/~bruno
+```
+
+Ninety seconds. The certificate ceremony for HTTPS takes longer than deploying the entire server. Your content is live. On the internet. In plaintext. Served by a binary smaller than most favicons you've downloaded today.
+
+#### Firewall
+
+```bash
+# Allow HTTP, HTTPS, SSH. Deny everything else.
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 1965/tcp   # Gemini, if you're feeling ambitious
+sudo ufw enable
+```
+
+That's four ports. burrowd doesn't phone home, doesn't check for updates, doesn't sync to any cloud. It sits there, on your server, serving files, until you tell it to stop. Like a good Unix daemon should.
 
 ## SECURITY
 
@@ -603,6 +746,7 @@ The `burrow` CLI is the power tool. Everything the server does, the CLI controls
 
 ## SEE ALSO
 
+- `burrow-client-manual.md` — the client manual (desktop, mobile, CLI). Same Big Picture, different tools.
 - `burrow-concept.md` — the full vision document. Warning: contains ambition, dry humor, and a surprisingly detailed revenue model.
 - Your favorite text editor — the real authoring tool. Vim, Emacs, nano, ed. We don't judge. (We judge a little. Use what makes you happy.)
 - Your favorite feed reader — subscribe to `/~user/feed.xml` (RSS) or `/~user/atom.xml` (Atom). NetNewsWire, Miniflux, Elfeed. You have one, right?

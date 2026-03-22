@@ -60,4 +60,4 @@ Access logging:
 Structured logging via tracing. Every request gets a single log line. No log4j. No log rotation daemon. No 50GB /var/log surprise on a Monday morning.
 
 /~burrow/server/14-tls   ← TLS & Security
-/~burrow/server/16-cli   Next: CLI Reference →
+/~burrow/server/15b-production   Next: Production Hosting →

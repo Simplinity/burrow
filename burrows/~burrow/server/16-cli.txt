@@ -67,5 +67,5 @@ Every command prints clean, colored output. No JSON. No machine-readable flags. 
 
 The entire CLI is built with Clap 4 in Rust. Tab completion is free. Help text is built-in. Typo correction is automatic. The binary is under 10 MB.
 
-/~burrow/server/15-deployment   ← Deployment
+/~burrow/server/15b-production   ← Production Hosting
 /~burrow/server/17-philosophy   Next: Philosophy →

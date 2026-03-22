@@ -1,0 +1,87 @@
+# Production Hosting
+
+So you want to put this on the real internet. On a real server. Where real people can read your plaintext with their real eyeballs. Welcome. This is easier than you think and harder than it should be, because Linux privilege models were designed by people who had strong opinions about port numbers.
+
+---
+
+The hardware.
+
+A Hetzner CX22 — two cores, four gigs of RAM, forty gigs of SSD — costs about four euros fifty per month and can host thousands of burrows simultaneously. burrowd uses roughly 15 MB of RAM at idle. Your monitoring stack will use more resources watching burrowd than burrowd uses serving content. This is expected. This is the point. This is a plaintext server, not a JVM.
+
+---
+
+Running on port 80.
+
+Port 80 is the "I am a web server" port. It's also a "privileged port" on Linux, meaning only root can bind to it. You have three options, ranked from most to least civilized:
+
+Option 1 — setcap (recommended):
+
+  sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+
+One command. The binary can bind port 80 and nothing else. No root daemon. No privilege escalation. The Linux equivalent of a bouncer checking IDs — specific, minimal, effective.
+
+Option 2 — systemd socket activation:
+
+Let systemd open port 80 and hand the socket to burrowd. The included burrowd.service supports this. systemd does the privileged bit; your process runs as a normal user. This is the enterprise-approved approach, which means it works great and is slightly over-engineered for a plaintext server.
+
+Option 3 — iptables redirect:
+
+  sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7070
+
+Run burrowd on 7070, redirect port 80 at the kernel level. This is the "I'll fix it properly later" approach. It works. You won't fix it later. That's also fine.
+
+---
+
+Adding HTTPS later.
+
+When you want the green padlock:
+
+  sudo apt install certbot
+  sudo certbot certonly --standalone -d phlogosphere.net
+
+  # Add to burrow.conf:
+  tls_cert = /etc/letsencrypt/live/phlogosphere.net/fullchain.pem
+  tls_key = /etc/letsencrypt/live/phlogosphere.net/privkey.pem
+  port = 443
+
+  sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+  systemctl restart burrowd
+
+For port 80 → 443 redirect:
+
+  sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 443
+
+Or use Caddy as a redirect-only proxy. Or don't redirect at all — your content is plaintext, and the irony of encrypting a system that philosophically has nothing to hide is not lost on us. But browsers show a scary warning without HTTPS, and we live in a society.
+
+---
+
+The ninety-second speedrun.
+
+From blank Hetzner box to live on the internet, timed:
+
+  0:00  ssh root@your.hetzner.ip
+  0:15  curl -fsSL .../install.sh | bash
+  0:30  burrow server init --domain phlogosphere.net --port 80
+        sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+  0:45  burrow init bruno
+  1:00  burrow new "Hello, Gopherspace"
+  1:15  sudo cp burrowd.service /etc/systemd/system/
+        sudo systemctl enable burrowd && sudo systemctl start burrowd
+  1:30  Done. Visit http://phlogosphere.net/~bruno
+
+Ninety seconds. The certificate ceremony for HTTPS takes longer than deploying the entire server.
+
+---
+
+Firewall.
+
+  sudo ufw allow 22/tcp     SSH
+  sudo ufw allow 80/tcp     HTTP
+  sudo ufw allow 443/tcp    HTTPS
+  sudo ufw allow 1965/tcp   Gemini (if you're feeling ambitious)
+  sudo ufw enable
+
+Four ports. burrowd doesn't phone home, doesn't check for updates, doesn't sync to any cloud. It sits there, on your server, serving files, until you tell it to stop. Like a good Unix daemon should.
+
+/~burrow/server/15-deployment   ← Deployment
+/~burrow/server/16-cli   Next: CLI Reference →

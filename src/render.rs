@@ -55,6 +55,8 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 "#;
 
 fn head(title: &str, addr: &str) -> String {
+    let title = html_escape(title);
+    let addr = html_escape(addr);
     format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -87,7 +89,7 @@ fn sidebar(active: &str, entries: &[BurrowEntry]) -> String {
         let cls = if e.path == active { " active" } else { "" };
         html.push_str(&format!(
             r#"<a class="sb-item{cls}" href="{path}"><span class="sb-icon">/</span>{name}</a>"#,
-            path = e.path, name = e.name, cls = cls
+            path = html_escape(&e.path), name = html_escape(&e.name), cls = cls
         ));
     }
     html.push_str(r#"<div class="sb-label">Discover</div>
@@ -107,7 +109,7 @@ fn render_entries(entries: &[BurrowEntry]) -> String {
         for e in &dirs {
             html.push_str(&format!(
                 r#"<a class="entry" href="{path}"><span class="entry-type">/</span><span class="entry-name">{name}</span><span class="entry-desc">{desc}</span><span class="entry-meta">{meta}</span></a>"#,
-                path = e.path, name = e.name, desc = e.description, meta = e.meta
+                path = html_escape(&e.path), name = html_escape(&e.name), desc = html_escape(&e.description), meta = html_escape(&e.meta)
             ));
         }
     }
@@ -116,7 +118,7 @@ fn render_entries(entries: &[BurrowEntry]) -> String {
         for e in &files {
             html.push_str(&format!(
                 r#"<a class="entry" href="{path}"><span class="entry-type txt">¶</span><span class="entry-name">{name}</span><span class="entry-desc">{desc}</span><span class="entry-meta">{meta}</span></a>"#,
-                path = e.path, name = e.name, desc = e.description, meta = e.meta
+                path = html_escape(&e.path), name = html_escape(&e.name), desc = html_escape(&e.description), meta = html_escape(&e.meta)
             ));
         }
     }
@@ -138,10 +140,9 @@ pub fn home_page(burrows: &[BurrowEntry]) -> String {
     html
 }
 
-pub fn directory_page(path: &str, entries: &[BurrowEntry]) -> String {
+pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntry]) -> String {
     let crumbs = build_crumbs(path);
     let desc = entries.first().map(|_| "").unwrap_or("");
-    let burrows = crate::list_burrows();
     let addr = format!("/{}", path);
 
     let mut html = head(path, &addr);
@@ -150,8 +151,8 @@ pub fn directory_page(path: &str, entries: &[BurrowEntry]) -> String {
 <h1>{}/</h1>
 <div class="subtitle">{}</div>
 {}</div></div>"#,
-        sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), &burrows),
-        crumbs, path, desc,
+        sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), burrows),
+        crumbs, html_escape(path), desc,
         render_entries(entries),
     ));
     html.push_str(footer());
@@ -162,41 +163,28 @@ pub fn text_page(path: &str, filename: &str, content: &str) -> String {
     let crumbs = build_crumbs(path);
     let words = content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
-
     let rendered = render_gph(content);
 
-    format!(r#"<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{filename} — Burrow</title>
-<style>{CSS}</style>
-</head>
-<body>
-<div class="progress" id="prog"></div>
-<div class="topbar">
-  <a href="/" class="logo"><span>/</span> burrow</a>
-  <div class="addr-bar"><span style="color:var(--muted)">gph://</span><span class="host">phlogosphere.net</span>/{path}</div>
-</div>
+    let mut html = head(filename, &format!("/{}", path));
+    html.push_str(&format!(r#"<div class="progress" id="prog"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
 <div class="meta">~{read_min} min read · {words} words</div>
 {rendered}
 </div>
-</div>
-{footer}
-<script>
-window.addEventListener('scroll',()=>{{
+</div>"#));
+    html.push_str(footer());
+    // Replace closing </body></html> to inject scroll script before it
+    let html = html.replace("</body></html>", r#"<script>
+window.addEventListener('scroll',()=>{
   const h=document.documentElement;
   const pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
   document.getElementById('prog').style.width=pct+'%';
-}});
+});
 </script>
-</body></html>"#,
-        footer = footer()
-    )
+</body></html>"#);
+    html
 }
 
 pub fn not_found_page(path: &str) -> String {
@@ -216,12 +204,12 @@ fn build_crumbs(path: &str) -> String {
     let mut acc = String::new();
     for part in &parts {
         acc.push_str(&format!("/{}", part));
-        html.push_str(&format!(r#" / <a href="{}">{}</a>"#, acc, part));
+        html.push_str(&format!(r#" / <a href="{}">{}</a>"#, html_escape(&acc), html_escape(part)));
     }
     html
 }
 
-fn render_gph(content: &str) -> String {
+pub fn render_gph(content: &str) -> String {
     let mut html = String::new();
     let mut in_code = false;
 
@@ -244,20 +232,26 @@ fn render_gph(content: &str) -> String {
             }
         }
 
-        if line.starts_with("# ") {
-            html.push_str(&format!("<h1>{}</h1>", html_escape(&line[2..])));
-        } else if line.starts_with("> ") {
-            html.push_str(&format!("<blockquote><p>{}</p></blockquote>", html_escape(&line[2..])));
+        if let Some(heading) = line.strip_prefix("# ") {
+            html.push_str(&format!("<h1>{}</h1>", html_escape(heading)));
+        } else if let Some(quote) = line.strip_prefix("> ") {
+            html.push_str(&format!("<blockquote><p>{}</p></blockquote>", html_escape(quote)));
         } else if line == "---" {
             html.push_str("<hr>");
-        } else if line.starts_with("→ ") {
-            let url = &line[4..].trim();
-            html.push_str(&format!(r#"<p><a href="{url}">→ {url}</a></p>"#));
+        } else if let Some(rest) = line.strip_prefix("→ ") {
+            let url = rest.trim();
+            html.push_str(&format!(
+                r#"<p><a href="{}">{} {}</a></p>"#,
+                html_escape_attr(url), html_escape("→"), html_escape(url)
+            ));
         } else if line.starts_with("/~") {
             let parts: Vec<&str> = line.splitn(2, "   ").collect();
             let link = parts[0].trim();
             let desc = parts.get(1).unwrap_or(&"");
-            html.push_str(&format!(r#"<p><a href="{link}">{link}</a> {desc}</p>"#));
+            html.push_str(&format!(
+                r#"<p><a href="{}">{}</a> {}</p>"#,
+                html_escape_attr(link), html_escape(link), html_escape(desc)
+            ));
         } else if line.is_empty() {
             // skip
         } else {
@@ -272,4 +266,12 @@ fn render_gph(content: &str) -> String {
 
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+}
+
+fn html_escape_attr(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#x27;")
 }

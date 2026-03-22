@@ -1,13 +1,16 @@
 use axum::{
     extract::Path,
-    response::Html,
+    http::StatusCode,
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path;
 
 mod render;
+
+const MAX_FILE_SIZE: u64 = 1_048_576; // 1 MB
 
 #[tokio::main]
 async fn main() {
@@ -31,24 +34,54 @@ async fn home() -> Html<String> {
     Html(render::home_page(&burrows))
 }
 
-async fn serve_burrow(Path(path): Path<String>) -> Html<String> {
-    let fs_path = PathBuf::from("burrows").join(&path);
+async fn serve_burrow(Path(path): Path<String>) -> Response {
+    let burrows_root = fs::canonicalize("burrows").unwrap_or_else(|_| path::PathBuf::from("burrows"));
+    let fs_path = path::PathBuf::from("burrows").join(&path);
 
-    if fs_path.is_dir() {
-        let entries = list_directory(&fs_path);
-        Html(render::directory_page(&path, &entries))
-    } else if fs_path.exists() {
-        let content = fs::read_to_string(&fs_path).unwrap_or_default();
-        let filename = fs_path.file_name().unwrap().to_str().unwrap();
-        Html(render::text_page(&path, filename, &content))
-    } else if fs_path.with_extension("txt").exists() {
-        let real_path = fs_path.with_extension("txt");
-        let content = fs::read_to_string(&real_path).unwrap_or_default();
-        let filename = real_path.file_name().unwrap().to_str().unwrap();
-        Html(render::text_page(&path, filename, &content))
-    } else {
-        Html(render::not_found_page(&path))
+    // Path traversal protection: canonicalize and verify prefix
+    let canonical = match fs::canonicalize(&fs_path) {
+        Ok(p) => p,
+        Err(_) => {
+            // File doesn't exist — try with .txt extension before giving up
+            let with_txt = fs_path.with_extension("txt");
+            match fs::canonicalize(&with_txt) {
+                Ok(p) if p.starts_with(&burrows_root) => {
+                    let content = read_file_checked(&p);
+                    let filename = p.file_name().unwrap().to_str().unwrap();
+                    return Html(render::text_page(&path, filename, &content)).into_response();
+                }
+                _ => {
+                    return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path))).into_response();
+                }
+            }
+        }
+    };
+
+    if !canonical.starts_with(&burrows_root) {
+        return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path))).into_response();
     }
+
+    if canonical.is_dir() {
+        let burrows = list_burrows();
+        let entries = list_directory(&canonical, &burrows_root);
+        Html(render::directory_page(&path, &entries, &burrows)).into_response()
+    } else {
+        let content = read_file_checked(&canonical);
+        let filename = canonical.file_name().unwrap().to_str().unwrap();
+        Html(render::text_page(&path, filename, &content)).into_response()
+    }
+}
+
+fn read_file_checked(path: &path::Path) -> String {
+    let size = fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    if size > MAX_FILE_SIZE {
+        return format!(
+            "This file is too large to display ({:.1} MB). Maximum is {} MB.",
+            size as f64 / 1_048_576.0,
+            MAX_FILE_SIZE / 1_048_576
+        );
+    }
+    fs::read_to_string(path).unwrap_or_default()
 }
 
 #[derive(Debug, Clone)]
@@ -64,10 +97,9 @@ pub struct BurrowEntry {
 pub enum EntryType {
     Directory,
     Text,
-    Link,
 }
 
-fn list_burrows() -> Vec<BurrowEntry> {
+pub fn list_burrows() -> Vec<BurrowEntry> {
     let mut entries = Vec::new();
     if let Ok(dirs) = fs::read_dir("burrows") {
         for entry in dirs.flatten() {
@@ -89,7 +121,7 @@ fn list_burrows() -> Vec<BurrowEntry> {
     entries
 }
 
-fn list_directory(dir: &PathBuf) -> Vec<BurrowEntry> {
+fn list_directory(dir: &path::Path, burrows_root: &path::Path) -> Vec<BurrowEntry> {
     let mut entries = Vec::new();
     if let Ok(items) = fs::read_dir(dir) {
         for item in items.flatten() {
@@ -98,7 +130,10 @@ fn list_directory(dir: &PathBuf) -> Vec<BurrowEntry> {
                 continue;
             }
             let path = item.path();
-            let relative = path.strip_prefix("burrows").unwrap().to_string_lossy().to_string();
+            let relative = path.strip_prefix(burrows_root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
 
             if path.is_dir() {
                 let desc = read_description(&path);
@@ -134,7 +169,7 @@ fn list_directory(dir: &PathBuf) -> Vec<BurrowEntry> {
     entries
 }
 
-fn read_description(dir: &PathBuf) -> String {
+fn read_description(dir: &path::Path) -> String {
     let burrow_file = dir.join(".burrow");
     if burrow_file.exists() {
         if let Ok(content) = fs::read_to_string(&burrow_file) {
@@ -148,7 +183,7 @@ fn read_description(dir: &PathBuf) -> String {
     String::new()
 }
 
-fn first_line_of(path: &PathBuf) -> String {
+fn first_line_of(path: &path::Path) -> String {
     fs::read_to_string(path)
         .unwrap_or_default()
         .lines()
@@ -157,3 +192,6 @@ fn first_line_of(path: &PathBuf) -> String {
         .trim_start_matches("# ")
         .to_string()
 }
+
+#[cfg(test)]
+mod tests;

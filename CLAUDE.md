@@ -12,7 +12,7 @@ A Gopher-inspired plaintext phlog server and CLI, built in Rust.
 | **Framework** | Axum 0.8, Tokio |
 | **CLI parser** | Clap 4 (derive) |
 | **Build** | `cargo build` |
-| **Test** | `cargo test` (36 unit tests) |
+| **Test** | `cargo test` |
 | **Lint** | `cargo clippy` |
 | **Binaries** | `burrowd` (server), `burrow` (CLI) |
 

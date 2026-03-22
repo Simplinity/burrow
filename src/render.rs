@@ -54,23 +54,32 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 @media(max-width:700px){.sidebar{display:none}.main{padding:20px 16px}}
 "#;
 
-fn head(title: &str, addr: &str, domain: &str) -> String {
+fn head_with_accent(title: &str, addr: &str, domain: &str, accent: Option<&str>) -> String {
     let title = html_escape(title);
     let addr = html_escape(addr);
     let domain = html_escape(domain);
+    let accent_css = match accent {
+        Some(color) => format!("\n<style>:root{{--accent:{}}}@media(prefers-color-scheme:dark){{:root{{--accent:{}}}}}</style>", html_escape(color), html_escape(color)),
+        None => String::new(),
+    };
     // Extract burrow name from addr for RSS feed link (e.g. "/~bruno/phlog" → "/~bruno/feed.xml")
     let rss_href = addr.split('/').nth(1)
         .filter(|s| s.starts_with('~'))
         .map(|b| format!("/{}/feed.xml", b))
         .unwrap_or_else(|| "/feed.xml".to_string());
+    let atom_href = addr.split('/').nth(1)
+        .filter(|s| s.starts_with('~'))
+        .map(|b| format!("/{}/atom.xml", b))
+        .unwrap_or_else(|| "/atom.xml".to_string());
     format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title} — Burrow</title>
-<style>{CSS}</style>
+<style>{CSS}</style>{accent_css}
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{rss_href}">
+<link rel="alternate" type="application/atom+xml" title="Atom Feed" href="{atom_href}">
 </head>
 <body>
 <div class="topbar">
@@ -79,6 +88,10 @@ fn head(title: &str, addr: &str, domain: &str) -> String {
     <span style="color:var(--muted)">gph://</span><span class="host">{domain}</span>{addr}
   </div>
 </div>"#)
+}
+
+fn head(title: &str, addr: &str, domain: &str) -> String {
+    head_with_accent(title, addr, domain, None)
 }
 
 fn footer(domain: &str) -> String {
@@ -150,32 +163,33 @@ pub fn home_page(burrows: &[BurrowEntry], domain: &str) -> String {
     html
 }
 
-pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntry], domain: &str) -> String {
+pub fn directory_page(path: &str, title: Option<&str>, entries: &[BurrowEntry], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
+    let display_title = title.unwrap_or(path);
     let desc = entries.first().map(|_| "").unwrap_or("");
     let addr = format!("/{}", path);
 
-    let mut html = head(path, &addr, domain);
+    let mut html = head_with_accent(display_title, &addr, domain, accent);
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
 <div class="crumbs">{}</div>
 <h1>{}/</h1>
 <div class="subtitle">{}</div>
 {}</div></div>"#,
         sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), burrows),
-        crumbs, html_escape(path), desc,
+        crumbs, html_escape(display_title), desc,
         render_entries(entries),
     ));
     html.push_str(&footer(domain));
     html
 }
 
-pub fn text_page(path: &str, filename: &str, content: &str, domain: &str) -> String {
+pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
     let words = content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
     let rendered = render_gph(content);
 
-    let mut html = head(filename, &format!("/{}", path), domain);
+    let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
     html.push_str(&format!(r#"<div class="progress" id="prog"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
@@ -206,11 +220,11 @@ pub fn not_found_page(path: &str, domain: &str) -> String {
     html
 }
 
-pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str) -> String {
+pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
     let burrow_name = path.split('/').next().unwrap_or(path);
 
-    let mut html = head("Guestbook", &format!("/{}", path), domain);
+    let mut html = head_with_accent("Guestbook", &format!("/{}", path), domain, accent);
     html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
@@ -323,6 +337,53 @@ pub fn render_gph(content: &str) -> String {
     if in_code {
         html.push_str("</pre>");
     }
+    html
+}
+
+pub fn firehose_page(posts: &[(String, String, String, String)], burrows: &[BurrowEntry], domain: &str, prev_page: Option<usize>, next_page: Option<usize>) -> String {
+    // posts: Vec<(date, title, burrow_name, url_path)>
+    let mut html = head("Firehose", "/firehose", domain);
+    html.push_str(&format!(r#"<div class="container">{}<div class="main">
+<div class="crumbs"><a href="/">{}</a> / firehose</div>
+<h1>Firehose</h1>
+<div class="subtitle">All recent posts across all burrows</div>"#,
+        sidebar("/firehose", burrows),
+        html_escape(domain),
+    ));
+
+    if posts.is_empty() {
+        html.push_str(r#"<p style="color:var(--muted);padding:32px 0;">No posts yet.</p>"#);
+    } else {
+        html.push_str(r#"<div class="section-label">Recent posts</div>"#);
+        for (date, title, burrow, url_path) in posts {
+            html.push_str(&format!(
+                r#"<a class="entry" href="{path}"><span class="entry-type txt">¶</span><span class="entry-name">{title}</span><span class="entry-desc">{burrow}</span><span class="entry-meta">{date}</span></a>"#,
+                path = html_escape(url_path),
+                title = html_escape(title),
+                burrow = html_escape(burrow),
+                date = html_escape(date),
+            ));
+        }
+    }
+
+    // Pagination links
+    if prev_page.is_some() || next_page.is_some() {
+        html.push_str(r#"<div style="display:flex;justify-content:space-between;padding:20px 12px;font-size:13px;">"#);
+        if let Some(p) = prev_page {
+            html.push_str(&format!(r#"<a href="/firehose?page={}">← Newer</a>"#, p));
+        } else {
+            html.push_str("<span></span>");
+        }
+        if let Some(p) = next_page {
+            html.push_str(&format!(r#"<a href="/firehose?page={}">Older →</a>"#, p));
+        } else {
+            html.push_str("<span></span>");
+        }
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div></div>");
+    html.push_str(&footer(domain));
     html
 }
 

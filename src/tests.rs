@@ -177,7 +177,7 @@ fn home_page_contains_burrow_count() {
 fn directory_page_shows_crumbs() {
     let entries = vec![];
     let burrows = vec![];
-    let html = render::directory_page("~bruno/phlog", &entries, &burrows, TEST_DOMAIN);
+    let html = render::directory_page("~bruno/phlog", None, &entries, &burrows, TEST_DOMAIN, None);
     assert!(html.contains(TEST_DOMAIN));
     assert!(html.contains("~bruno"));
     assert!(html.contains("phlog"));
@@ -187,20 +187,20 @@ fn directory_page_shows_crumbs() {
 fn text_page_shows_reading_time() {
     let words: Vec<&str> = std::iter::repeat("word").take(230).collect();
     let content = words.join(" ");
-    let html = render::text_page("~bruno/test.txt", "test.txt", &content, TEST_DOMAIN);
+    let html = render::text_page("~bruno/test.txt", "test.txt", &content, TEST_DOMAIN, None);
     assert!(html.contains("~1 min read"));
 }
 
 #[test]
 fn text_page_has_progress_bar() {
-    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN);
+    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN, None);
     assert!(html.contains(r#"id="prog""#));
     assert!(html.contains("scroll"));
 }
 
 #[test]
 fn text_page_uses_shared_head() {
-    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN);
+    let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN, None);
     assert!(html.contains("<!DOCTYPE html>"));
     assert!(html.contains("burrow v0.1.0"));
     assert!(html.contains("gph://"));

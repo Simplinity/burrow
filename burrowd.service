@@ -1,0 +1,16 @@
+[Unit]
+Description=Burrow — plaintext phlog server
+After=network.target
+
+[Service]
+Type=simple
+User=burrow
+Group=burrow
+WorkingDirectory=/opt/burrow
+ExecStart=/usr/local/bin/burrowd
+Restart=on-failure
+RestartSec=5
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=multi-user.target

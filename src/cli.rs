@@ -31,8 +31,18 @@ enum Commands {
         /// Path within your burrow (default: root)
         path: Option<String>,
     },
+    /// Switch active burrow
+    Switch {
+        /// Burrow name to switch to (e.g. "bruno" or "~bruno")
+        name: Option<String>,
+    },
     /// Show burrow status
     Status,
+    /// Preview a draft file in the terminal
+    Preview {
+        /// Path to file (e.g. "_draft-post.txt" or "phlog/_wip.txt")
+        path: String,
+    },
     /// Open a file in your editor
     Edit {
         /// Path to file (e.g. "about.txt" or "phlog/my-post.txt")
@@ -42,6 +52,11 @@ enum Commands {
     Guestbook {
         #[command(subcommand)]
         command: GuestbookCommands,
+    },
+    /// Export your burrow as a tar.gz backup
+    Export {
+        /// Output file path (default: ~/burrow-export-YYYY-MM-DD.tar.gz)
+        output: Option<String>,
     },
     /// Server management
     Server {
@@ -80,7 +95,10 @@ fn main() {
         Commands::Init { name } => cmd_init(&burrows_root, &name, &cfg),
         Commands::New { title } => cmd_new(&burrows_root, &title, &cfg),
         Commands::Ls { path } => cmd_ls(&burrows_root, path.as_deref()),
+        Commands::Switch { name } => cmd_switch(&burrows_root, name.as_deref()),
+        Commands::Preview { path } => cmd_preview(&burrows_root, &path),
         Commands::Status => cmd_status(&burrows_root, &cfg),
+        Commands::Export { output } => cmd_export(&burrows_root, output.as_deref()),
         Commands::Guestbook { command } => match command {
             GuestbookCommands::Init => cmd_guestbook_init(&burrows_root),
             GuestbookCommands::Show => cmd_guestbook_show(&burrows_root),
@@ -209,6 +227,106 @@ fn cmd_init(burrows_root: &Path, name: &str, server_url: &str) {
     println!();
     println!("  Write your first post:");
     println!("    \x1b[1mburrow new \"My first post\"\x1b[0m");
+    println!();
+}
+
+fn cmd_switch(burrows_root: &Path, name: Option<&str>) {
+    let burrows: Vec<String> = fs::read_dir(burrows_root)
+        .unwrap()
+        .flatten()
+        .filter(|e| {
+            let n = e.file_name().to_string_lossy().to_string();
+            n.starts_with('~') && e.path().is_dir()
+        })
+        .map(|e| e.file_name().to_string_lossy().to_string())
+        .collect();
+
+    if burrows.is_empty() {
+        eprintln!("  No burrows found. Run `burrow init <name>` first.");
+        std::process::exit(1);
+    }
+
+    let active = find_active_burrow(burrows_root);
+
+    match name {
+        Some(n) => {
+            let target = if n.starts_with('~') { n.to_string() } else { format!("~{}", n) };
+            if !burrows.contains(&target) {
+                eprintln!("  Burrow {} not found.", target);
+                eprintln!("  Available: {}", burrows.join(", "));
+                std::process::exit(1);
+            }
+            fs::write(burrows_root.join(".burrow-active"), &target).unwrap();
+            println!();
+            println!("  Switched to \x1b[36m{}\x1b[0m", target);
+            println!();
+        }
+        None => {
+            // List all burrows with active marker
+            println!();
+            println!("  \x1b[1m/\x1b[0m Burrows");
+            println!();
+            let mut sorted = burrows.clone();
+            sorted.sort();
+            for b in &sorted {
+                let marker = if active.as_deref() == Some(b.as_str()) { " \x1b[32m◀\x1b[0m" } else { "" };
+                println!("    \x1b[36m{}\x1b[0m{}", b, marker);
+            }
+            println!();
+            println!("  Switch with: \x1b[1mburrow switch <name>\x1b[0m");
+            println!();
+        }
+    }
+}
+
+fn cmd_preview(burrows_root: &Path, path: &str) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+    let filepath = root.join(path);
+
+    // Try with .txt extension if not found
+    let filepath = if filepath.exists() {
+        filepath
+    } else if filepath.with_extension("txt").exists() {
+        filepath.with_extension("txt")
+    } else {
+        eprintln!("  File not found: {}", path);
+        std::process::exit(1);
+    };
+
+    let content = fs::read_to_string(&filepath).unwrap_or_default();
+    let filename = filepath.file_name().unwrap().to_string_lossy();
+    let words = content.split_whitespace().count();
+    let read_min = (words as f64 / 230.0).ceil() as usize;
+
+    println!();
+    println!("  \x1b[1m{}\x1b[0m", filename);
+    println!("  \x1b[90m~{} min read · {} words\x1b[0m", read_min, words);
+    println!("  \x1b[90m{}\x1b[0m", "─".repeat(50));
+    println!();
+
+    for line in content.lines() {
+        if let Some(heading) = line.strip_prefix("# ") {
+            println!("  \x1b[1;36m{}\x1b[0m", heading);
+        } else if let Some(quote) = line.strip_prefix("> ") {
+            println!("  \x1b[90m│ {}\x1b[0m", quote);
+        } else if line == "---" {
+            println!("  \x1b[90m{}\x1b[0m", "─".repeat(50));
+        } else if let Some(rest) = line.strip_prefix("→ ") {
+            println!("  \x1b[36m→ {}\x1b[0m", rest);
+        } else if line.starts_with("  ") {
+            println!("  \x1b[33m{}\x1b[0m", line);
+        } else if line.is_empty() {
+            println!();
+        } else {
+            println!("  {}", line);
+        }
+    }
+    println!();
+    println!("  \x1b[90m{}\x1b[0m", "─".repeat(50));
+    if filename.starts_with('_') {
+        println!("  \x1b[90mDraft — not visible on the server\x1b[0m");
+    }
     println!();
 }
 
@@ -419,6 +537,51 @@ fn cmd_edit(burrows_root: &Path, path: &str) {
         }
         _ => {
             eprintln!("  Could not open editor '{}'.", editor);
+        }
+    }
+}
+
+fn cmd_export(burrows_root: &Path, output: Option<&str>) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+
+    if !root.is_dir() {
+        eprintln!("  Burrow {} not found.", name);
+        std::process::exit(1);
+    }
+
+    let date = Local::now().format("%Y-%m-%d").to_string();
+    let default_name = format!("burrow-export-{}-{}.tar.gz", name.trim_start_matches('~'), date);
+    let output_path = output.unwrap_or(&default_name);
+
+    let status = Command::new("tar")
+        .arg("czf")
+        .arg(output_path)
+        .arg("-C")
+        .arg(burrows_root)
+        .arg(&name)
+        .status();
+
+    match status {
+        Ok(s) if s.success() => {
+            let size = fs::metadata(output_path).map(|m| m.len()).unwrap_or(0);
+            let size_str = if size < 1024 {
+                format!("{} B", size)
+            } else if size < 1_048_576 {
+                format!("{:.1} KB", size as f64 / 1024.0)
+            } else {
+                format!("{:.2} MB", size as f64 / 1_048_576.0)
+            };
+            println!();
+            println!("  \x1b[1m/\x1b[0m Exported \x1b[36m{}\x1b[0m", name);
+            println!();
+            println!("  File:  \x1b[36m{}\x1b[0m", output_path);
+            println!("  Size:  {}", size_str);
+            println!();
+        }
+        _ => {
+            eprintln!("  Export failed. Make sure `tar` is installed.");
+            std::process::exit(1);
         }
     }
 }

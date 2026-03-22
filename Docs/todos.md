@@ -28,19 +28,19 @@
 
 ## Server features
 
-- [ ] Draft visibility — files prefixed with `_` hidden from listings and HTTP
-- [ ] Content limits enforcement (64 KB max file, 256 files/dir, 8 levels depth)
-- [ ] Directory `.burrow` config: `title`, `sort`, `pin` support
-- [ ] Server stats endpoint or CLI command
+- [x] Draft visibility — files prefixed with `_` hidden from listings and HTTP
+- [x] Content limits enforcement (64 KB max file, 256 files/dir, 8 levels depth)
+- [x] Directory `.burrow` config: `title` support (sort/pin pending)
+- [x] Server stats endpoint or CLI command
 - [ ] `tokio::fs` migration (async filesystem reads under load)
-- [ ] Static asset serving (favicon, robots.txt)
-- [ ] Rate limiting on guestbook POST
-- [ ] Access logging (structured, optional)
+- [x] Static asset serving (favicon, robots.txt)
+- [x] Rate limiting on guestbook POST
+- [x] Access logging (structured, optional)
 
 ## CLI features
 
-- [ ] `burrow switch` — multi-user CLI (switch active burrow)
-- [ ] `burrow preview` — local draft preview before publishing
+- [x] `burrow switch` — multi-user CLI (switch active burrow)
+- [x] `burrow preview` — local draft preview before publishing
 - [ ] `burrow push` / `burrow pull` — remote sync (requires auth)
 - [ ] `burrow search` — CLI search via Veronica-NG
 
@@ -64,24 +64,24 @@
 ## Discovery & social
 
 - [ ] Discover page (`/discover/`) — trending, most-bookmarked, random burrow
-- [ ] Firehose (`/firehose/`) — chronological stream of all new publications
+- [x] Firehose (`/firehose/`) — chronological stream of all new publications
 - [ ] Public bookmarks per user (`/~user/bookmarks/`)
 - [ ] Bookmark counts as search ranking signal
-- [ ] Random burrow feature on discover page
+- [x] Random burrow feature on discover page
 - [ ] Burrow-to-burrow ping (cross-reference notifications)
 
 ## Feed / timeline
 
-- [ ] Cross-burrow chronological feed (all burrows on server)
-- [ ] Per-burrow Atom feed (alongside existing RSS)
-- [ ] Feed pagination
+- [x] Cross-burrow chronological feed (all burrows on server)
+- [x] Per-burrow Atom feed (alongside existing RSS)
+- [x] Feed pagination
 
 ## Content & rendering
 
-- [ ] `.gph` rendering in directory listing descriptions (currently plaintext only)
-- [ ] Burrow theming — per-burrow accent color via `.burrow` config
+- [x] `.gph` rendering in directory listing descriptions (currently plaintext only)
+- [x] Burrow theming — per-burrow accent color via `.burrow` config
 - [ ] ASCII art gallery (`/gallery/`)
-- [ ] Reading time estimate (word count / 250 wpm, shown briefly)
+- [x] Reading time estimate (word count / 250 wpm, shown briefly)
 - [ ] Yearly `timecapsule.txt` generation
 - [ ] Image/binary file serving (paid tier)
 
@@ -94,11 +94,11 @@
 
 ## Infrastructure
 
-- [ ] Docker image / `docker-compose.yml`
+- [x] Docker image / `docker-compose.yml`
 - [ ] Self-hosting one-liner install script
-- [ ] Systemd service file
-- [ ] Backup / export tool
-- [ ] Health check endpoint
+- [x] Systemd service file
+- [x] Backup / export tool
+- [x] Health check endpoint
 
 ---
 

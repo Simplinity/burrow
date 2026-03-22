@@ -50,7 +50,7 @@ burrows/
 When someone visits `http://yourserver:7070/~alice/phlog/2026-03-20-hello-world`, burrowd:
 
 1. Finds `burrows/~alice/phlog/2026-03-20-hello-world.txt`
-2. Reads the file (if it's under 1 MB — we have *standards*)
+2. Reads the file (if it's under 64 KB — we have *standards*)
 3. Renders it in a beautiful reading view
 4. That's it. There is no step 4. Go outside.
 
@@ -64,6 +64,13 @@ When someone visits `http://yourserver:7070/~alice/phlog/2026-03-20-hello-world`
 | `/~alice/phlog/` | Directory listing of Alice's phlog |
 | `/~alice/guestbook` | Guestbook with a form to sign (see GUESTBOOK below) |
 | `/~alice/feed.xml` | Auto-generated RSS feed of Alice's phlog (see RSS below) |
+| `/~alice/atom.xml` | Auto-generated Atom feed of Alice's phlog |
+| `/firehose` | Chronological stream of all posts across all burrows |
+| `/random` | Redirects to a random burrow |
+| `/health` | Returns `{"status":"ok"}` — for uptime monitors |
+| `/stats` | Returns `{"burrows":N,"files":N,"uptime_secs":N}` |
+| `/robots.txt` | Allows all crawlers |
+| `/favicon.ico` | Transparent 1x1 icon (stops browser 404s) |
 | `/nonexistent` | A 404 page with existential undertones |
 
 ### Content Format
@@ -97,7 +104,7 @@ Three spaces separate the path from the description.
 
 ### Hidden Files
 
-Files starting with `.` or `_` are hidden from directory listings. The `.burrow` config file uses this. Your draft posts can too — prefix them with `_` and they're invisible until you're ready. We won't judge. Much.
+Files starting with `.` or `_` are hidden from directory listings *and* blocked from direct HTTP access. The `.burrow` config file uses this. Your draft posts can too — prefix them with `_` and they're invisible until you're ready. Preview them locally with `burrow preview _my-draft.txt`. We won't judge. Much.
 
 ## CONFIGURATION
 
@@ -127,6 +134,22 @@ That's the whole config file. Two keys. We considered adding more options but go
 | `port` | `7070` | Port to listen on. 7070 because 70 was Gopher's port and we're exactly 100x better. (Citation needed.) |
 
 If `burrow.conf` doesn't exist, burrowd defaults to `localhost:7070`, which is fine for local development and existential crises.
+
+### Per-Burrow Configuration
+
+Each burrow (and subdirectory) can have a `.burrow` file:
+
+```
+description = ITAD, web craft, and too many opinions about typography
+accent = #e06030
+title = My Fancy Name
+```
+
+| Key | Description |
+|-----|-------------|
+| `description` | Shown in directory listings next to the burrow name |
+| `accent` | Hex color (`#abc` or `#aabbcc`) that overrides the default accent color for all pages in this burrow |
+| `title` | Overrides the directory name displayed in listings and page headings |
 
 ## RUNNING
 
@@ -171,20 +194,33 @@ burrowd
 
 ### systemd (for the Linux Faithful)
 
-```ini
-[Unit]
-Description=burrowd — a hole in the internet
-After=network.target
+A ready-made service file is included as `burrowd.service`:
 
-[Service]
-Type=simple
-WorkingDirectory=/srv/burrow
-ExecStart=/usr/local/bin/burrowd
-Restart=on-failure
-RestartSec=5
+```bash
+cp burrowd.service /etc/systemd/system/
+systemctl enable burrowd
+systemctl start burrowd
+```
 
-[Install]
-WantedBy=multi-user.target
+It runs as a `burrow` user from `/opt/burrow`, restarts on failure, and sets `RUST_LOG=info` for structured access logging.
+
+### Docker
+
+A multi-stage Dockerfile is included:
+
+```bash
+docker build -t burrow .
+docker run -p 7070:7070 -v ./burrows:/burrow/burrows burrow
+```
+
+### Access Logging
+
+burrowd logs all HTTP requests via `tower-http` and `tracing`. Control verbosity with the `RUST_LOG` environment variable:
+
+```bash
+RUST_LOG=info burrowd      # default — logs requests with method, path, status, latency
+RUST_LOG=debug burrowd     # verbose
+RUST_LOG=warn burrowd      # quiet — errors and warnings only
 ```
 
 ## SECURITY
@@ -193,7 +229,10 @@ We take security seriously, even if we don't take much else seriously:
 
 - **Path traversal protection**: All paths are canonicalized and verified to stay inside `burrows/`. Your `../../etc/passwd` jokes won't work here. We've heard them all.
 - **HTML escaping**: All user content is escaped before rendering. Both in text content (`<` → `&lt;`) and in URL attributes (`"` → `&quot;`). XSS is not a feature.
-- **File size limit**: 1 MB maximum per file. If your plaintext file is over 1 MB, you may be writing a novel. We respect that, but we won't serve it.
+- **File size limit**: 64 KB maximum per served file. If your plaintext file is over 64 KB, you may be writing a novel. We respect that, but we won't serve it.
+- **Path depth limit**: Maximum 8 directory levels deep. Keeps things sane.
+- **Draft enforcement**: Files starting with `_` or `.` are blocked from HTTP access entirely, not just hidden from listings.
+- **Rate limiting**: Guestbook POST requests are limited to one per 30 seconds per IP. Spammers will need to be patient.
 - **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person. (The guestbook form is the one exception — it appends text to a single file. We had a long meeting about this. The votes were 3-2.)
 
 ## GUESTBOOK
@@ -232,16 +271,18 @@ View entries from the CLI:
 burrow guestbook show
 ```
 
-## RSS
+## RSS & ATOM
 
-Every burrow automatically gets an RSS feed. No configuration needed. No plugins. No "install the RSS extension." It just works, like things used to.
+Every burrow automatically gets both an RSS and an Atom feed. No configuration needed. No plugins. No "install the RSS extension." It just works, like things used to.
 
 ```
 /~alice/feed.xml    ← full RSS 2.0 XML feed
 /~alice/feed        ← same thing, for the lazy typist
+/~alice/atom.xml    ← Atom 1.0 feed
+/~alice/atom        ← same thing, for the lazy typist
 ```
 
-The feed includes all `.txt` posts from the `phlog/` directory, sorted newest first, with a content preview. Your favorite RSS reader (you have one, right? *Right?*) will auto-discover it via the `<link rel="alternate">` tag in every page's `<head>`.
+The feeds include all `.txt` posts from the `phlog/` directory, sorted newest first, with a content preview. Your favorite RSS reader (you have one, right? *Right?*) will auto-discover both via `<link rel="alternate">` tags in every page's `<head>`.
 
 The feed uses whatever domain you configured with `burrow server init`. If you're still on `localhost`, the feed URLs will say `http://localhost:7070`. If you set a domain, they'll say `https://yourdomain.com`. We assume HTTPS because it's 2026 and you're not a barbarian.
 
@@ -253,12 +294,13 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 
 | Thing | Limit | Why |
 |-------|-------|-----|
-| File size | 1 MB | If you need more, you need a different kind of server |
-| Burrow size | 1 MB total (free tier) | Constraints breed creativity. Also, disk space costs money. |
+| File size | 64 KB | If you need more, you need a different kind of server |
+| Path depth | 8 levels | Deeply nested content is a code smell |
+| Guestbook rate | 1 post / 30 sec / IP | Spammers hate this one weird trick |
 | JavaScript | 1 scroll handler | We are not proud. We are not ashamed. |
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
-| Config options | 2 | See "Configuration" above. We meant it. |
+| Config options | 2 (server) + 3 (per-burrow) | See "Configuration" above. We meant it. |
 | POST endpoints | 1 (guestbook) | We agonized over this. |
 
 ## TROUBLESHOOTING
@@ -279,14 +321,33 @@ A: No. We use our own format. It's simpler. You'll get used to it. Or you won't.
 A: It's called "your terminal." `ls`, `cat`, `vim`. The admin panel that ships with every Unix system since 1971.
 
 **Q: Can I add custom CSS/themes?**
-A: No. The design is the design. We spent time on it. It has a light mode and a dark mode and they both look good. You're welcome.
+A: Sort of. You can set `accent = #hexcolor` in your `.burrow` config to change your burrow's accent color. The rest of the design is the design. We spent time on it. It has a light mode and a dark mode and they both look good. You're welcome.
+
+## CLI REFERENCE
+
+The `burrow` CLI manages your content:
+
+| Command | Description |
+|---------|-------------|
+| `burrow init <name>` | Create a new burrow |
+| `burrow new "Post title"` | Create a new phlog post and open in `$EDITOR` |
+| `burrow edit <path>` | Open a file in `$EDITOR` |
+| `burrow preview <path>` | Preview a file (including `_` drafts) in the terminal |
+| `burrow ls [path]` | List burrow contents |
+| `burrow status` | Show burrow stats (files, size, latest post) |
+| `burrow switch [name]` | List burrows or switch active burrow |
+| `burrow export [output]` | Export active burrow as a `.tar.gz` backup |
+| `burrow guestbook init` | Create a guestbook |
+| `burrow guestbook show` | Show guestbook entries |
+| `burrow server init` | Configure server domain and port |
 
 ## SEE ALSO
 
 - `burrow(1)` — the CLI companion for creating and managing content
 - `burrow-concept.md` — the full vision document (warning: contains ambition)
 - Your favorite text editor — the real authoring tool
-- Your favorite RSS reader — for subscribing to `/~user/feed.xml`
+- Your favorite feed reader — for subscribing to `/~user/feed.xml` (RSS) or `/~user/atom.xml` (Atom)
+- `/firehose` — the cross-burrow chronological feed
 - RFC 1436 — the Gopher protocol spec, for historical context and mild nostalgia
 
 ## AUTHORS

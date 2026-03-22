@@ -215,7 +215,7 @@ pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str) -> S
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
 <h1>Guestbook</h1>
-<div class="meta">{}'s guestbook · {} entries</div>
+<div class="meta">{}'s guestbook · {}</div>
 
 <form method="post" style="margin:24px 0 32px;padding:20px;background:var(--faint);border-radius:8px;">
   <div style="margin-bottom:12px;">
@@ -233,7 +233,7 @@ pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str) -> S
 </form>
 "#,
         html_escape(burrow_name),
-        entries.len(),
+        if entries.len() == 1 { "1 entry".to_string() } else { format!("{} entries", entries.len()) },
     ));
 
     if entries.is_empty() {

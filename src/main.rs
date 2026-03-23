@@ -783,10 +783,12 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             let with_gph = fs_path.with_extension("gph");
             if let Ok(p) = fs::canonicalize(&with_txt).await {
                 if p.starts_with(&burrows_root) {
+                    let etag = generate_etag(&p).await;
+                    if let Some(ref e) = etag { if etag_matches(&headers, e) { return (StatusCode::NOT_MODIFIED, [(header::ETAG, e.clone())]).into_response(); } }
                     let content = read_file_checked(&p).await;
                     let filename = p.file_name().unwrap().to_str().unwrap();
                     if is_gallery_item(&path) {
-                        return Html(render::art_page(&path, filename, &content, &domain, accent.as_deref())).into_response();
+                        return html_response_with_etag(&headers, render::art_page(&path, filename, &content, &domain, accent.as_deref()), etag);
                     }
                     let mut mentions = find_mentions_of(&path).await;
                     let remote_pings = load_received_pings(&format!("/{}", path)).await;
@@ -797,24 +799,26 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
                     let series = detect_series(&p, &path).await;
                     let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
                     if slow { html = inject_slow_mode(html); }
-                    return Html(html).into_response();
+                    return html_response_with_etag(&headers, html, etag);
                 }
             }
             if let Ok(p) = fs::canonicalize(&with_gph).await {
                 if p.starts_with(&burrows_root) {
+                    let etag = generate_etag(&p).await;
+                    if let Some(ref e) = etag { if etag_matches(&headers, e) { return (StatusCode::NOT_MODIFIED, [(header::ETAG, e.clone())]).into_response(); } }
                     let content = read_file_checked(&p).await;
                     let filename = p.file_name().unwrap().to_str().unwrap();
                     if filename == "guestbook.gph" {
                         let entries = parse_guestbook(&content);
-                        return Html(render::guestbook_page(&path, &entries, &domain, accent.as_deref())).into_response();
+                        return html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &domain, accent.as_deref()), etag);
                     }
                     if filename == "bookmarks.gph" {
                         let bookmarks = parse_bookmarks(&content);
-                        return Html(render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref())).into_response();
+                        return html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref()), etag);
                     }
                     let mut html = render::text_page(&path, filename, &content, &domain, accent.as_deref());
                     if slow { html = inject_slow_mode(html); }
-                    return Html(html).into_response();
+                    return html_response_with_etag(&headers, html, etag);
                 }
             }
             return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
@@ -846,17 +850,19 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             return serve_binary_file(&canonical, mime).await;
         }
 
+        let etag = generate_etag(&canonical).await;
+        if let Some(ref e) = etag { if etag_matches(&headers, e) { return (StatusCode::NOT_MODIFIED, [(header::ETAG, e.clone())]).into_response(); } }
+
         let content = read_file_checked(&canonical).await;
         if filename == "guestbook.gph" {
             let entries = parse_guestbook(&content);
-            Html(render::guestbook_page(&path, &entries, &domain, accent.as_deref())).into_response()
+            html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &domain, accent.as_deref()), etag)
         } else if filename == "bookmarks.gph" {
             let bookmarks = parse_bookmarks(&content);
-            Html(render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref())).into_response()
+            html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref()), etag)
         } else if is_gallery_item(&path) {
-            Html(render::art_page(&path, filename, &content, &domain, accent.as_deref())).into_response()
+            html_response_with_etag(&headers, render::art_page(&path, filename, &content, &domain, accent.as_deref()), etag)
         } else {
-            // Find incoming mentions (local + remote federation pings) and ring navigation
             let mut mentions = find_mentions_of(&path).await;
             let remote_pings = load_received_pings(&format!("/{}", path)).await;
             mentions.extend(remote_pings);
@@ -866,7 +872,7 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             let series = detect_series(&canonical, &path).await;
             let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
             if slow { html = inject_slow_mode(html); }
-            Html(html).into_response()
+            html_response_with_etag(&headers, html, etag)
         }
     }
 }
@@ -1017,6 +1023,34 @@ async fn serve_binary_file(path: &path::Path, mime: &str) -> Response {
         }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Failed to read file").into_response(),
     }
+}
+
+/// Generate an ETag from a file's modification time and size
+async fn generate_etag(path: &path::Path) -> Option<String> {
+    let meta = fs::metadata(path).await.ok()?;
+    let modified = meta.modified().ok()?;
+    let secs = modified.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
+    let size = meta.len();
+    Some(format!("\"{}{}\"", secs, size))
+}
+
+/// Check if client's If-None-Match header matches the ETag — return true if 304 should be sent
+fn etag_matches(headers: &HeaderMap, etag: &str) -> bool {
+    if let Some(inm) = headers.get(header::IF_NONE_MATCH) {
+        if let Ok(val) = inm.to_str() {
+            return val == etag || val == "*";
+        }
+    }
+    false
+}
+
+/// Build an HTML response with ETag header attached.
+fn html_response_with_etag(_headers: &HeaderMap, html: String, etag: Option<String>) -> Response {
+    let mut response = Html(html).into_response();
+    if let Some(etag_val) = etag {
+        response.headers_mut().insert(header::ETAG, header::HeaderValue::from_str(&etag_val).unwrap());
+    }
+    response
 }
 
 async fn read_file_checked(path: &path::Path) -> String {

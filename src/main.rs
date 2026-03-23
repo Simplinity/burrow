@@ -1015,7 +1015,8 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             Vec::new()
         };
 
-        Html(render::directory_page_with_neighbors(&path, title.as_deref(), &entries, &neighbors, &burrows, &domain, accent.as_deref())).into_response()
+        let desc = read_description(&canonical).await;
+        Html(render::directory_page_with_neighbors(&path, title.as_deref(), &desc, &entries, &neighbors, &burrows, &domain, accent.as_deref())).into_response()
     } else {
         let filename = canonical.file_name().unwrap().to_str().unwrap();
 

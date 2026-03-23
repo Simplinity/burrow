@@ -208,22 +208,22 @@ pub fn directory_page(path: &str, title: Option<&str>, entries: &[BurrowEntry], 
     html
 }
 
-pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, entries: &[BurrowEntry], neighbors: &[(String, Vec<String>)], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
+pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, description: &str, entries: &[BurrowEntry], neighbors: &[(String, Vec<String>)], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
     let display_title = title.unwrap_or(path);
-    let desc = entries.first().map(|_| "").unwrap_or("");
     let addr = format!("/{}", path);
 
     let mut html = head_with_accent(display_title, &addr, domain, accent);
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs">{}</div>
-<h1>{}/</h1>
-<div class="subtitle">{}</div>
-{}"#,
+<div class="crumbs">{crumbs}</div>
+<h1>{}/</h1>"#,
         sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), burrows),
-        crumbs, html_escape(display_title), desc,
-        render_entries(entries),
+        html_escape(display_title),
     ));
+    if !description.is_empty() {
+        html.push_str(&format!(r#"<div class="subtitle">{}</div>"#, html_escape(description)));
+    }
+    html.push_str(&render_entries(entries));
 
     // Neighbors block
     if !neighbors.is_empty() {

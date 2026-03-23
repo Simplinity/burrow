@@ -943,7 +943,8 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
                     let rings = find_rings_for_burrow(&all_rings, burrow_name);
                     let series = detect_series(&p, &path).await;
                     let mdate = file_modified_date(&p).await;
-                    let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
+                    let burrows = list_burrows().await;
+                    let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &burrows, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
                     if slow { html = inject_slow_mode(html); }
                     return html_response_with_etag(&headers, html, etag);
                 }
@@ -956,11 +957,13 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
                     let filename = p.file_name().unwrap().to_str().unwrap();
                     if filename == "guestbook.gph" {
                         let entries = parse_guestbook(&content);
-                        return html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &domain, accent.as_deref()), etag);
+                        let burrows = list_burrows().await;
+                        return html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &burrows, &domain, accent.as_deref()), etag);
                     }
                     if filename == "bookmarks.gph" {
                         let bookmarks = parse_bookmarks(&content);
-                        return html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref()), etag);
+                        let burrows = list_burrows().await;
+                        return html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &burrows, &domain, accent.as_deref()), etag);
                     }
                     let mut html = render::text_page(&path, filename, &content, &domain, accent.as_deref());
                     if slow { html = inject_slow_mode(html); }
@@ -1010,12 +1013,13 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
         if let Some(ref e) = etag { if etag_matches(&headers, e) { return (StatusCode::NOT_MODIFIED, [(header::ETAG, e.clone())]).into_response(); } }
 
         let content = read_file_checked(&canonical).await;
+        let burrows = list_burrows().await;
         if filename == "guestbook.gph" {
             let entries = parse_guestbook(&content);
-            html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &domain, accent.as_deref()), etag)
+            html_response_with_etag(&headers, render::guestbook_page(&path, &entries, &burrows, &domain, accent.as_deref()), etag)
         } else if filename == "bookmarks.gph" {
             let bookmarks = parse_bookmarks(&content);
-            html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref()), etag)
+            html_response_with_etag(&headers, render::bookmarks_page(&path, &bookmarks, &burrows, &domain, accent.as_deref()), etag)
         } else if is_gallery_item(&path) {
             html_response_with_etag(&headers, render::art_page(&path, filename, &content, &domain, accent.as_deref()), etag)
         } else {
@@ -1027,7 +1031,7 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             let rings = find_rings_for_burrow(&all_rings, burrow_name);
             let series = detect_series(&canonical, &path).await;
             let mdate = file_modified_date(&canonical).await;
-            let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
+            let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &burrows, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
             if slow { html = inject_slow_mode(html); }
             html_response_with_etag(&headers, html, etag)
         }

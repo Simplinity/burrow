@@ -248,12 +248,12 @@ pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, entries: &
 }
 
 pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
-    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent, None, None)
+    text_page_with_mentions(path, filename, content, &[], &[], "", &[], domain, accent, None, None)
 }
 
 use crate::SeriesInfo;
 
-pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>, last_modified: Option<&str>) -> String {
+pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, burrows: &[BurrowEntry], domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>, last_modified: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
 
     // Detect "Inspired by" convention: first non-empty line starting with "← /~"
@@ -269,10 +269,12 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
         String::new()
     };
 
+    let burrow_path = format!("/{}", path.split('/').next().unwrap_or(""));
     let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
     html.push_str(&format!(r#"<div class="progress"></div>
-<div style="max-width:680px;margin:0 auto;padding:0 24px;">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>"#));
+<div class="container">{}<div class="main">
+<div class="crumbs">{crumbs}</div>"#,
+        sidebar(&burrow_path, burrows)));
 
     // Render "Inspired by" block if present
     if let Some((inspired_path, inspired_author)) = &inspired_by {
@@ -372,7 +374,7 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
         html.push_str("</div>");
     }
 
-    html.push_str("</div>");
+    html.push_str("</div></div>");
     html.push_str(&footer(domain));
     html
 }
@@ -388,13 +390,14 @@ pub fn not_found_page(path: &str, domain: &str) -> String {
     html
 }
 
-pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str, accent: Option<&str>) -> String {
+pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
     let burrow_name = path.split('/').next().unwrap_or(path);
+    let burrow_path = format!("/{}", burrow_name);
 
     let mut html = head_with_accent("Guestbook", &format!("/{}", path), domain, accent);
-    html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
+    html.push_str(&format!(r#"<div class="container">{}<div class="main">
+<div class="crumbs">{crumbs}</div>
 <div class="reading">
 <h1>Guestbook</h1>
 <div class="meta">{}'s guestbook · {}</div>
@@ -414,6 +417,7 @@ pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str, acce
     style="padding:8px 20px;background:var(--accent);color:var(--surface);border:none;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;cursor:pointer;">Sign the book</button>
 </form>
 "#,
+        sidebar(&burrow_path, burrows),
         html_escape(burrow_name),
         if entries.len() == 1 { "1 entry".to_string() } else { format!("{} entries", entries.len()) },
     ));
@@ -710,17 +714,19 @@ pub fn art_page(path: &str, filename: &str, content: &str, domain: &str, accent:
     html
 }
 
-pub fn bookmarks_page(path: &str, bookmarks: &[BookmarkEntry], domain: &str, accent: Option<&str>) -> String {
+pub fn bookmarks_page(path: &str, bookmarks: &[BookmarkEntry], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
     let burrow_name = path.split('/').next().unwrap_or(path);
+    let burrow_path = format!("/{}", burrow_name);
 
     let mut html = head_with_accent("Bookmarks", &format!("/{}", path), domain, accent);
-    html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
+    html.push_str(&format!(r#"<div class="container">{}<div class="main">
+<div class="crumbs">{crumbs}</div>
 <div class="reading">
 <h1>Bookmarks</h1>
 <div class="meta">{}'s bookmarks · {}</div>
 "#,
+        sidebar(&burrow_path, burrows),
         html_escape(burrow_name),
         if bookmarks.len() == 1 { "1 link".to_string() } else { format!("{} links", bookmarks.len()) },
     ));

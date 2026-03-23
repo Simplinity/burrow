@@ -2801,12 +2801,8 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         body.push_str(&format!("# {}\n", domain));
         body.push_str(&format!("Community burrow server — {} burrows\n\n", burrows.len()));
         for b in &burrows {
-            body.push_str(&format!("/  {}   {}   {}\n", b.path, b.name, b.description));
+            body.push_str(&format!("/\t{}\t{}\t{}\n", b.path, b.name, b.description));
         }
-        body.push_str(&format!("\n→  /discover   Discover\n"));
-        body.push_str(&format!("→  /firehose   Firehose\n"));
-        body.push_str(&format!("→  /rings   Rings\n"));
-        body.push_str(&format!("→  /random   Random burrow\n"));
         return body;
     }
 
@@ -2825,7 +2821,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         body.push_str(&format!("# Search: {}\n", q));
         body.push_str(&format!("@ results={}\n\n", results.len()));
         for r in &results {
-            body.push_str(&format!("¶  {}   {}   {:.2}\n", r.path, r.title, r.score));
+            body.push_str(&format!("¶\t{}\t{}\t{:.2}\n", r.path, r.title, r.score));
         }
         if results.is_empty() {
             body.push_str("No results found.\n");
@@ -2859,7 +2855,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         }
         posts.sort_by(|a, b| b.0.cmp(&a.0));
         for (date, title, author, url_path) in posts.iter().take(10) {
-            body.push_str(&format!("¶  {}   {} · {} · {}\n", url_path, title, author, date));
+            body.push_str(&format!("¶\t{}\t{}\t{}\t{}\n", url_path, title, author, date));
         }
 
         // Random burrow
@@ -2869,7 +2865,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         // All burrows
         body.push_str("\n## All burrows\n\n");
         for b in &burrows {
-            body.push_str(&format!("/  {}   {}   {}\n", b.path, b.name, b.description));
+            body.push_str(&format!("/\t{}\t{}\t{}\n", b.path, b.name, b.description));
         }
         return body;
     }
@@ -2898,7 +2894,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         let mut body = String::from("=> directory\n");
         body.push_str(&format!("# Firehose · {} posts\n\n", posts.len()));
         for (date, title, author, url_path) in &posts {
-            body.push_str(&format!("¶  {}   {} · {} · {}\n", url_path, title, author, date));
+            body.push_str(&format!("¶\t{}\t{}\t{}\t{}\n", url_path, title, author, date));
         }
         return body;
     }
@@ -2930,7 +2926,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
             body.push_str("No servers configured.\n");
         }
         for s in &servers {
-            body.push_str(&format!("→  {}   {}\n", s.url, s.description));
+            body.push_str(&format!("→\t{}\t{}\n", s.url, s.description));
         }
         return body;
     }
@@ -2971,7 +2967,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         let mut body = String::from("=> directory\n");
         body.push_str(&format!("# {} — feed\n\n", burrow_name));
         for (date, title, url) in &posts {
-            body.push_str(&format!("¶  {}   {} · {}\n", url, title, date));
+            body.push_str(&format!("¶\t{}\t{}\t{}\n", url, title, date));
         }
         return body;
     }
@@ -3035,7 +3031,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         for e in &entries {
             let symbol = if e.entry_type == EntryType::Directory { "/" } else { "¶" };
             // Format: TYPE  PATH   DISPLAY_NAME   DESCRIPTION   META
-            body.push_str(&format!("{}  {}   {}   {}   {}\n", symbol, e.path, e.name, e.description, e.meta));
+            body.push_str(&format!("{}\t{}\t{}\t{}\t{}\n", symbol, e.path, e.name, e.description, e.meta));
         }
 
         // Neighbors on burrow root
@@ -3046,7 +3042,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
             if !neighbors.is_empty() {
                 body.push_str("\n## Neighbors\n\n");
                 for (member, rings) in &neighbors {
-                    body.push_str(&format!("/  {}   {}\n", member.trim_start_matches('/'), rings.join(", ")));
+                    body.push_str(&format!("/\t{}\t{}\t{}\n", member, member.trim_start_matches('/'), rings.join(", ")));
                 }
             }
         }

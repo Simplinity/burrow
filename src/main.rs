@@ -10,6 +10,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::sync::{Arc, Mutex};
@@ -40,6 +41,102 @@ struct AppState {
     guestbook_limiter: Arc<Mutex<HashMap<IpAddr, Instant>>>,
     started_at: Instant,
     search_index: Arc<std::sync::RwLock<Arc<SearchIndex>>>,
+    page_counts: Arc<PageCounts>,
+}
+
+// ── Page Load Counts ────────────────────────────────────────────
+
+struct PageCounts {
+    /// Per-burrow page load counters: ~bruno → AtomicU64
+    counts: std::sync::RwLock<HashMap<String, Arc<AtomicU64>>>,
+    /// Month these counts belong to (YYYY-MM)
+    month: std::sync::RwLock<String>,
+}
+
+impl Clone for PageCounts {
+    fn clone(&self) -> Self {
+        let counts = self.counts.read().unwrap();
+        let mut new_counts = HashMap::new();
+        for (k, v) in counts.iter() {
+            new_counts.insert(k.clone(), Arc::new(AtomicU64::new(v.load(Ordering::Relaxed))));
+        }
+        Self {
+            counts: std::sync::RwLock::new(new_counts),
+            month: std::sync::RwLock::new(self.month.read().unwrap().clone()),
+        }
+    }
+}
+
+impl PageCounts {
+    fn new() -> Self {
+        let month = Local::now().format("%Y-%m").to_string();
+        // Try to load persisted stats
+        let mut counts = HashMap::new();
+        if let Ok(content) = std::fs::read_to_string("burrows/.stats") {
+            for line in content.lines() {
+                if let Some(rest) = line.strip_prefix("month = ") {
+                    if rest.trim() != month {
+                        // Different month — start fresh
+                        counts.clear();
+                        break;
+                    }
+                } else if let Some((name, val)) = line.split_once(" = ") {
+                    if let Ok(n) = val.trim().parse::<u64>() {
+                        counts.insert(name.to_string(), Arc::new(AtomicU64::new(n)));
+                    }
+                }
+            }
+        }
+        Self {
+            counts: std::sync::RwLock::new(counts),
+            month: std::sync::RwLock::new(month),
+        }
+    }
+
+    fn increment(&self, burrow: &str) {
+        // Check if month rolled over
+        let now_month = Local::now().format("%Y-%m").to_string();
+        {
+            let mut month = self.month.write().unwrap();
+            if *month != now_month {
+                *month = now_month;
+                self.counts.write().unwrap().clear();
+            }
+        }
+
+        let counts = self.counts.read().unwrap();
+        if let Some(counter) = counts.get(burrow) {
+            counter.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
+        drop(counts);
+        // Need to insert new counter
+        let mut counts = self.counts.write().unwrap();
+        counts.entry(burrow.to_string())
+            .or_insert_with(|| Arc::new(AtomicU64::new(0)))
+            .fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn get(&self, burrow: &str) -> u64 {
+        let counts = self.counts.read().unwrap();
+        counts.get(burrow).map(|c| c.load(Ordering::Relaxed)).unwrap_or(0)
+    }
+
+    fn current_month(&self) -> String {
+        self.month.read().unwrap().clone()
+    }
+
+    fn persist(&self) {
+        let counts = self.counts.read().unwrap();
+        let month = self.month.read().unwrap();
+        let mut content = format!("month = {}\n", *month);
+        let mut sorted: Vec<_> = counts.iter().collect();
+        sorted.sort_by_key(|(k, _)| k.clone());
+        for (name, val) in sorted {
+            content.push_str(&format!("{} = {}\n", name, val.load(Ordering::Relaxed)));
+        }
+        let _ = std::fs::write("burrows/.stats", content);
+    }
 }
 
 // ── Search Index ────────────────────────────────────────────────
@@ -361,12 +458,24 @@ async fn main() {
     // Build search index
     let search_index = SearchIndex::build().await;
 
+    let page_counts = Arc::new(PageCounts::new());
+
+    // Persist page counts every 5 minutes
+    let persist_counts = page_counts.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(300)).await;
+            persist_counts.persist();
+        }
+    });
+
     let state = AppState {
         config: Arc::new(std::sync::RwLock::new(Arc::new(cfg.clone()))),
         domain: Arc::new(cfg.domain.clone()),
         guestbook_limiter: Arc::new(Mutex::new(HashMap::new())),
         started_at: Instant::now(),
         search_index: Arc::new(std::sync::RwLock::new(Arc::new(search_index))),
+        page_counts,
     };
 
     let app = Router::new()
@@ -442,6 +551,8 @@ async fn main() {
                 // Rebuild search index
                 let new_index = SearchIndex::build().await;
                 *reload_state.search_index.write().unwrap() = Arc::new(new_index);
+                // Persist page counts on reload too
+                reload_state.page_counts.persist();
                 tracing::info!("Reload complete");
             }
         });
@@ -736,6 +847,11 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
     let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
 
+    // Increment page load counter for this burrow
+    if let Some(burrow) = path.split('/').next().filter(|s| s.starts_with('~')) {
+        state.page_counts.increment(burrow);
+    }
+
     // Virtual routes: feeds are generated, not real files
     if path.ends_with("/feed.xml") || path.ends_with("/feed") {
         let burrow_name = path.split('/').next().unwrap_or("");
@@ -765,6 +881,24 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             return ([(header::CONTENT_TYPE, "text/x-opml; charset=utf-8")], opml).into_response();
         }
         return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
+    }
+
+    // Per-burrow stats: one number, one month
+    if path.ends_with("/stats") {
+        let burrow_name = path.split('/').next().unwrap_or("");
+        if burrow_name.starts_with('~') {
+            let count = state.page_counts.get(burrow_name);
+            let month = state.page_counts.current_month();
+            // Parse month for display: 2026-03 → March 2026
+            let month_display = chrono::NaiveDate::parse_from_str(&format!("{}-01", month), "%Y-%m-%d")
+                .map(|d| d.format("%B %Y").to_string())
+                .unwrap_or(month);
+            let json = format!(
+                "{{\"burrow\":\"{}\",\"page_loads\":{},\"month\":\"{}\"}}",
+                burrow_name, count, month_display
+            );
+            return ([(header::CONTENT_TYPE, "application/json")], json).into_response();
+        }
     }
 
     // Draft visibility: block any path segment starting with _ or .

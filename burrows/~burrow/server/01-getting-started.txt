@@ -32,4 +32,5 @@ Visit http://localhost:7070. There's your burrow. There are your words. There's 
 
 The whole process takes about 90 seconds. That's less time than it takes to accept the cookie banner on most websites.
 
+/~burrow/about   ← Back to ~burrow
 /~burrow/server/02-writing   Next: Writing in Burrow →

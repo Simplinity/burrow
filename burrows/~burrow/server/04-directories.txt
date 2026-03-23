@@ -10,23 +10,25 @@ Every directory can contain a .burrow file with up to five keys:
   accent = #e06030
   title = My Fancy Name
   sort = modified-desc
-  pin = important-post.txt readme.txt
+  pin = about.txt
 
 description: shown next to the directory name in listings. Your elevator pitch in one line.
 
-accent: a hex color that overrides the default teal. Your burrow, your color. Validated server-side because we don't trust your CSS instincts. (Just kidding. Mostly.)
+accent: a hex color (#abc or #aabbcc) that overrides the default teal. Your burrow, your color. Validated server-side — invalid hex values are silently ignored, because we don't trust your CSS instincts. (Just kidding. Mostly.)
 
-title: overrides the directory name in headings. Because phlog/ deserves better.
+title: overrides the directory name in headings and listings. Because phlog/ deserves better, and gallery/ deserves a name.
 
-sort: controls listing order. Options are name-asc (default), name-desc, modified-desc (newest first, perfect for phlogs), and modified-asc.
+sort: controls listing order. Options are name-asc (default), name-desc, modified-desc (newest first — perfect for phlogs), and modified-asc.
 
-pin: space-separated filenames that get pinned to the top, in the order you specify. Your greatest hits, always above the fold.
+pin: a single filename pinned to the top of the directory listing, regardless of sort order. The equivalent of taping a note to the fridge. One pin per directory — we're minimalists, not Pinterest.
 
 ---
 
 The config format is deliberately flat. No nesting. No YAML. No TOML sections. No JSON braces. One key = one value per line. If you can read a grocery list, you can read a .burrow file.
 
-There are exactly ten config keys in the entire system: five for the server, five per directory. The full configuration of a Burrow deployment fits in a tweet. We consider this a feature.
+The .burrow file works in subdirectories too. Put one in phlog/.burrow with sort = modified-desc and your latest post rises to the top. Put one in gallery/.burrow with title = The Gallery and it shows up with a proper name in the parent listing.
+
+There are exactly eleven config keys in the entire system: six for the server (domain, port, aliases, tls_cert, tls_key, gemini_port) and five per directory. The full configuration of a Burrow deployment fits in a tweet. We consider this a feature.
 
 /~burrow/server/03-drafts   ← Drafts & Publishing
 /~burrow/server/05-guestbook   Next: Guestbook →

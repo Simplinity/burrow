@@ -1,0 +1,61 @@
+# Serving More Than Words
+
+Burrow is a plaintext server. But sometimes plaintext needs company.
+
+You can put images, audio files, PDFs, fonts, and archives in your burrow. The server will serve them with the correct MIME type and caching headers — no configuration, no media management, no upload endpoint. Just files in a directory.
+
+## What gets served
+
+Drop a file in your burrow. If it has one of these extensions, burrowd knows what to do:
+
+  .png .jpg .jpeg .gif .svg .webp   → image
+  .mp3 .ogg .wav                    → audio
+  .pdf                              → document
+  .woff .woff2                      → font
+  .tar.gz .zip                      → archive
+
+That's it. Fifteen extensions. No video (this isn't YouTube), no executables (this isn't SourceForge), no JavaScript bundles (this isn't... well, you know).
+
+## Size limits
+
+Text files: 64 KB maximum. Binary files: 2 MB maximum.
+
+The distinction exists because text gets the full reading-view treatment — parsed, rendered, styled, wrapped in HTML. Binaries are served raw. The browser handles the rest.
+
+If your PNG is over 2 MB, you're probably using the wrong format. SVG for diagrams. WebP for photos. Or better yet: ASCII art. (See the Gallery feature.)
+
+## How it works
+
+Binary files are served with:
+
+- The correct Content-Type header (based on file extension)
+- Cache-Control: public, max-age=86400 (24 hours)
+- No HTML wrapping — the file is served as-is
+
+This means images display in the browser, audio plays in the browser's native player, and PDFs open in the browser's PDF viewer. No JavaScript. No custom player. No "loading..."
+
+## Audio attachment convention
+
+If you have a text file and an audio file with the same name:
+
+  burrows/~alice/phlog/
+    2026-03-20-on-silence.txt
+    2026-03-20-on-silence.mp3
+
+The text file renders in the reading view. The audio file is accessible at the same URL with the `.mp3` extension. It's not automatic — there's no "play" button embedded in the text. But the convention is there for anyone who wants to link to their own narration:
+
+→ /~alice/phlog/2026-03-20-on-silence.mp3
+
+Podcasting for minimalists.
+
+## What this is NOT
+
+- Not an image gallery. For that, use the Gallery feature (a directory named gallery/).
+- Not a CDN. Files are served from disk, one at a time.
+- Not an upload endpoint. Files go in via the CLI, rsync, or your file manager.
+- Not a media manager. No thumbnails, no resizing, no transcoding. The file is the file.
+
+The constraint is the point. If you need media hosting, you need a different kind of server. Burrow serves your words. The binary files are guests.
+
+/~burrow/server/17-philosophy   ← The Philosophy of Less
+/~burrow/server/19-operations   Operations & Monitoring →

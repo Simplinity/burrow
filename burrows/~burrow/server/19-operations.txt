@@ -1,0 +1,64 @@
+# Operations & Monitoring
+
+burrowd is designed to run quietly in a corner and not bother anyone. But sometimes you need to check that the corner still exists.
+
+## Health check
+
+  GET /health → {"status":"ok"}
+
+That's the entire health check. One endpoint. One JSON key. One value. If you get this response, the server is running. If you don't, it isn't. Uptime monitoring solved in four lines of code.
+
+Point your monitoring service (UptimeRobot, Healthchecks.io, a cron job with curl) at /health and move on with your life.
+
+## Server stats
+
+  GET /stats → {"burrows":3,"files":47,"uptime_secs":86400}
+
+Three numbers. How many burrows exist, how many files total, and how long the server has been running. No per-page analytics. No visitor tracking. No dashboard with seventeen graphs. Just: is anything here, and how long has it been here.
+
+## robots.txt
+
+  GET /robots.txt → User-agent: *
+                     Allow: /
+
+We allow all crawlers. Burrow content is public by design. If you don't want something indexed, don't publish it. (Or prefix it with _ to make it a draft — then the server returns 404 and there's nothing to index.)
+
+## favicon.ico
+
+  GET /favicon.ico → (1x1 transparent ICO, 62 bytes)
+
+Browsers request this on every page load. Without it, you get a 404 in your access logs for every single request. We serve a transparent pixel. The log stays clean. The browser stays happy. Nobody sees a favicon. Everybody wins.
+
+If you want a real favicon, put one in your burrow and the server will serve it as a binary file. But you probably don't want one. Favicons are how the browser remembers which tab is which. Burrow tabs all look the same. That's a feature.
+
+## Access logging
+
+burrowd logs every HTTP request via tower-http and tracing. Control verbosity with the RUST_LOG environment variable:
+
+  RUST_LOG=info burrowd     # default: method, path, status, latency
+  RUST_LOG=debug burrowd    # verbose: headers, body size, timing
+  RUST_LOG=warn burrowd     # quiet: warnings and errors only
+  RUST_LOG=error burrowd    # silent: only errors
+
+Logs go to stderr. Redirect to a file:
+
+  burrowd 2>> /var/log/burrow.log
+
+Or let systemd's journal handle it:
+
+  journalctl -u burrowd -f
+
+No built-in log rotation. No log analysis dashboard. No "events per second" metric. If you need those, you know where to find logrotate and grep. They've been shipping with Unix since before most web frameworks were born.
+
+## The address bar
+
+You may notice the address bar at the top of every page shows:
+
+  gph://yourdomain.com/~alice/phlog/my-post
+
+This is an aesthetic choice. The gph:// protocol is the native Burrow wire format — lighter than HTTP, more structured than Gemini. The address bar references it as a nod to what Burrow aspires to be. It is not (yet) a real protocol you can type into a browser.
+
+Please do not file bug reports about this. We know.
+
+/~burrow/server/18-binary-files   ← Serving More Than Words
+/~burrow/server/20-custom-domains   Custom Domains →

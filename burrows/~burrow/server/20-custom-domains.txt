@@ -1,0 +1,63 @@
+# Custom Domains
+
+Your burrow server can answer to multiple domain names. One primary, as many aliases as you want.
+
+## How it works
+
+In your burrow.conf:
+
+  domain = phlogosphere.net
+  aliases = burrow.bruno.be, myburrow.com
+
+Point the DNS A records for both aliases to your server's IP address. Done.
+
+When someone visits burrow.bruno.be, the server reads the Host header and uses that domain for:
+
+- Breadcrumb navigation (shows burrow.bruno.be, not phlogosphere.net)
+- RSS and Atom feed URLs (so feed readers get the right links)
+- Search index export (so federation references use the right domain)
+- The address bar (shows gph://burrow.bruno.be/...)
+
+Same content, different front door. The primary domain is canonical — aliases are vanity mirrors that happen to reflect the exact same thing.
+
+## What you need to do
+
+Three things. Maybe four.
+
+1. Add the aliases to burrow.conf (comma-separated)
+2. Point DNS to your server (A record or CNAME)
+3. If using HTTPS: get a certificate that covers all domains (wildcard or multi-domain/SAN cert)
+4. Restart burrowd (it reads the config at startup)
+
+The startup banner confirms your aliases:
+
+  / burrow v0.1.0
+
+  Tunneling...
+
+  Domain:         phlogosphere.net
+  Aliases:        burrow.bruno.be, myburrow.com
+  HTTPS gateway:  http://0.0.0.0:7070
+
+## What this is NOT
+
+- Not per-burrow custom domains. All aliases serve the same server, with all burrows. /~alice on phlogosphere.net is the same as /~alice on burrow.bruno.be.
+- Not automatic SSL. You bring your own certificate. Let's Encrypt supports multi-domain certs via certbot --expand.
+- Not DNS hosting. You manage your own zone files. We're a server, not a registrar.
+- Not a CDN. All aliases resolve to the same IP. If you want geographic distribution, that's what Cloudflare is for. (Though if you're serving plaintext on Burrow, you probably don't need geographic distribution. Your pages are smaller than most DNS responses.)
+
+## When to use aliases
+
+- You're migrating from an old domain and want both to work during transition
+- You want a short vanity domain alongside your primary
+- You run a community server and different groups prefer different URLs
+- You just like having options
+
+## When NOT to use aliases
+
+- You want ~alice.mysite.com (per-burrow subdomains) — not supported yet
+- You want different content on different domains — that's two servers
+- You want to feel important — buy a third domain instead, it's cheaper than therapy
+
+/~burrow/server/19-operations   ← Operations & Monitoring
+/~burrow/server/01-getting-started   Back to the beginning →

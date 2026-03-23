@@ -16,13 +16,15 @@ This is the Burrow equivalent of trackbacks, webmentions, and "@" replies — wi
 
 How local mentions work: when a page is requested, burrowd scans all phlog posts on the server for links to that page. No database. No index. Just grep, essentially. It's fast because text files are small and SSDs are fast.
 
-How federation works: other Burrow servers can POST to /ping when their users link to your content:
+How federation works: other Burrow servers can POST JSON to /ping when their users link to your content:
 
   POST /ping
-  source=https://other.server/~kai/response
-  target=/~alice/phlog/her-post
+  Content-Type: application/json
 
-The ping is stored in burrows/.pings and merged with local mentions at render time. Simple. Stateless. No handshake. No verification.
+  {"source": "https://other.server/~kai/response",
+   "target": "/~alice/phlog/her-post"}
+
+The ping is stored in burrows/.pings (max 100 per server) and merged with local mentions at render time. Simple. Stateless. No handshake. No verification.
 
 ---
 
@@ -34,7 +36,7 @@ This means: write a post, link to someone on another server with a gph:// URL, r
 
 The entire federation model is "federation by URL." Servers don't need to know about each other. They just serve content at addresses. Links connect them. Pings notify them. Search indexes them. That's it.
 
-No ActivityPub. No Mastodon compatibility layer. No protocol negotiation. Just HTTP POST with two form fields. If that's not simple enough, we'll accept carrier pigeons.
+No ActivityPub. No Mastodon compatibility layer. No protocol negotiation. Just HTTP POST with two JSON fields. If that's not simple enough, we'll accept carrier pigeons.
 
 /~burrow/server/09-discover   ← Discover & Firehose
 /~burrow/server/11-gallery   Next: Gallery →

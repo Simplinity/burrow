@@ -10,6 +10,14 @@ The company is profitable, small, and has never taken venture capital.
 
 ---
 
+What's already shipped (and what's next).
+
+Custom domains: done. Add aliases to burrow.conf and your burrow answers to multiple domain names. The server reads the Host header and adjusts breadcrumbs, feed URLs, and canonical references. DNS is your problem.
+
+Full-text search: done. BM25 ranking, freshness boost, search operators (author:, type:, fresh:). The index builds at startup. Veronica-NG lives at /search.
+
+Federation: done. Outgoing pings on startup, incoming POST /ping endpoint, mentions displayed on posts. The simplest possible distributed system.
+
 What's coming next.
 
 The Tauri desktop client. A native window that speaks gph://, renders in Literata, and makes the keyboard feel like a superpower. Under 8 MB. Starts in under a second.
@@ -17,8 +25,6 @@ The Tauri desktop client. A native window that speaks gph://, renders in Literat
 The mobile reader. iOS and Android. Reading, bookmarking, discovering. No publishing — that's deliberate.
 
 Reading challenges. Community goals tracked locally. No leaderboards, no gamification. Just a personal counter and the satisfaction of reaching a goal you set for yourself.
-
-Custom domains. Your burrow at your domain. gph://yourname.com.
 
 The landing page. burrow.sh — the manifesto, the waitlist, the first impression. Just text. Fast. Beautiful. The product as its own advertisement.
 

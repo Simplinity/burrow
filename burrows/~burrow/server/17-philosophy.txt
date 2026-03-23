@@ -49,4 +49,4 @@ A burrow is small, warm, and yours. That's always been the promise of the person
   Now go write something.
 
 /~burrow/server/16-cli   ← CLI Reference
-/~burrow/about   ← Back to about
+/~burrow/server/18-binary-files   Next: Serving More Than Words →

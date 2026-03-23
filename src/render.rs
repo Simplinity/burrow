@@ -207,6 +207,45 @@ pub fn directory_page(path: &str, title: Option<&str>, entries: &[BurrowEntry], 
     html
 }
 
+pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, entries: &[BurrowEntry], neighbors: &[(String, Vec<String>)], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
+    let crumbs = build_crumbs(path, domain);
+    let display_title = title.unwrap_or(path);
+    let desc = entries.first().map(|_| "").unwrap_or("");
+    let addr = format!("/{}", path);
+
+    let mut html = head_with_accent(display_title, &addr, domain, accent);
+    html.push_str(&format!(r#"<div class="container">{}<div class="main">
+<div class="crumbs">{}</div>
+<h1>{}/</h1>
+<div class="subtitle">{}</div>
+{}"#,
+        sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), burrows),
+        crumbs, html_escape(display_title), desc,
+        render_entries(entries),
+    ));
+
+    // Neighbors block
+    if !neighbors.is_empty() {
+        html.push_str(r#"<div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--faint);">"#);
+        html.push_str(r#"<div style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:12px;">Neighbors</div>"#);
+        for (member_path, ring_names) in neighbors {
+            let display = member_path.trim_start_matches('/');
+            let rings_str = ring_names.join(", ");
+            html.push_str(&format!(
+                r#"<div style="padding:6px 0;font-family:'JetBrains Mono',monospace;font-size:13px;"><a href="{}">{}</a> <span style="font-size:11px;color:var(--muted);">· {}</span></div>"#,
+                html_escape_attr(member_path),
+                html_escape(display),
+                html_escape(&rings_str),
+            ));
+        }
+        html.push_str("</div>");
+    }
+
+    html.push_str("</div></div>");
+    html.push_str(&footer(domain));
+    html
+}
+
 pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
     text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent, None)
 }

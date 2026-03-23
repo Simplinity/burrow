@@ -852,7 +852,17 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
         let burrows = list_burrows().await;
         let entries = list_directory(&canonical, &burrows_root).await;
         let title = read_title(&canonical).await;
-        Html(render::directory_page(&path, title.as_deref(), &entries, &burrows, &domain, accent.as_deref())).into_response()
+
+        // Find neighbors if this is a burrow root (/~user, one segment starting with ~)
+        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+        let neighbors = if segments.len() == 1 && segments[0].starts_with('~') {
+            let all_rings = load_all_rings().await;
+            find_neighbors(&all_rings, segments[0])
+        } else {
+            Vec::new()
+        };
+
+        Html(render::directory_page_with_neighbors(&path, title.as_deref(), &entries, &neighbors, &burrows, &domain, accent.as_deref())).into_response()
     } else {
         let filename = canonical.file_name().unwrap().to_str().unwrap();
 
@@ -1659,6 +1669,30 @@ fn find_rings_for_burrow(rings: &[Ring], burrow_name: &str) -> Vec<Ring> {
         .filter(|r| r.members.iter().any(|m| m == &local_path))
         .cloned()
         .collect()
+}
+
+/// Find neighbors: other burrows that share at least one ring with this burrow.
+/// Returns a list of (burrow_path, shared_ring_names).
+fn find_neighbors(rings: &[Ring], burrow_name: &str) -> Vec<(String, Vec<String>)> {
+    let local_path = format!("/{}", burrow_name);
+    let my_rings = find_rings_for_burrow(rings, burrow_name);
+    let mut neighbor_map: HashMap<String, Vec<String>> = HashMap::new();
+
+    for ring in &my_rings {
+        for member in &ring.members {
+            // Skip self and remote members (gph://)
+            if *member == local_path || !member.starts_with("/~") {
+                continue;
+            }
+            neighbor_map.entry(member.clone())
+                .or_default()
+                .push(ring.title.clone());
+        }
+    }
+
+    let mut neighbors: Vec<(String, Vec<String>)> = neighbor_map.into_iter().collect();
+    neighbors.sort_by(|a, b| a.0.cmp(&b.0));
+    neighbors
 }
 
 /// For a given ring and current burrow, find the previous and next members.

@@ -131,12 +131,14 @@ fn sidebar(active: &str, entries: &[BurrowEntry]) -> String {
     let discover_cls = if active == "/discover" { " active" } else { "" };
     let firehose_cls = if active == "/firehose" { " active" } else { "" };
     let rings_cls = if active == "/rings" { " active" } else { "" };
+    let servers_cls = if active == "/servers" { " active" } else { "" };
     let search_cls = if active == "/search" { " active" } else { "" };
     html.push_str(&format!(r#"<div class="sb-label">Explore</div>
 <a class="sb-item{search_cls}" href="/search"><span class="sb-icon">?</span>Search</a>
 <a class="sb-item{discover_cls}" href="/discover"><span class="sb-icon">◊</span>Discover</a>
 <a class="sb-item{firehose_cls}" href="/firehose"><span class="sb-icon">≡</span>Firehose</a>
 <a class="sb-item{rings_cls}" href="/rings"><span class="sb-icon">◎</span>Rings</a>
+<a class="sb-item{servers_cls}" href="/servers"><span class="sb-icon">⊕</span>Servers</a>
 <a class="sb-item" href="/random"><span class="sb-icon">↻</span>Random</a>
 </div>"#));
     html
@@ -497,6 +499,51 @@ pub fn rings_list_page(rings: &[Ring], burrows: &[BurrowEntry], domain: &str) ->
                 ));
             }
             html.push_str("</div></div>");
+        }
+    }
+
+    html.push_str("</div></div>");
+    html.push_str(&footer(domain));
+    html
+}
+
+pub fn servers_page(servers: &[crate::ServerEntry], burrows: &[BurrowEntry], domain: &str) -> String {
+    let mut html = head("Servers", "/servers", domain);
+    html.push_str(&format!(r#"<div class="container">{}<div class="main">
+<div class="crumbs"><a href="/">{}</a> / servers</div>
+<h1>Known Servers</h1>
+<div class="subtitle">{} known Burrow servers — curated by the operator of this one</div>"#,
+        sidebar("/servers", burrows),
+        html_escape(domain),
+        servers.len(),
+    ));
+
+    if servers.is_empty() {
+        html.push_str(r#"<p style="color:var(--muted);padding:32px 0;text-align:center;">No known servers listed. Add them to <code>servers.conf</code>.</p>"#);
+    } else {
+        for server in servers {
+            let display_url = server.url.trim_start_matches("gph://").trim_start_matches("https://").trim_end_matches('/');
+            let href = if server.url.starts_with("gph://") {
+                format!("https://{}", server.url.trim_start_matches("gph://"))
+            } else {
+                server.url.clone()
+            };
+            html.push_str(&format!(
+                r#"<div style="padding:14px 12px;border-bottom:1px solid var(--faint);">
+<div style="display:flex;align-items:center;gap:8px;">
+  <span style="color:var(--accent);font-size:14px;">⊕</span>
+  <a href="{href}" style="font-size:14px;font-weight:500;">{display}</a>
+</div>"#,
+                href = html_escape_attr(&href),
+                display = html_escape(display_url),
+            ));
+            if !server.description.is_empty() {
+                html.push_str(&format!(
+                    r#"<div style="font-size:13px;color:var(--muted);margin-top:4px;padding-left:22px;">{}</div>"#,
+                    html_escape(&server.description),
+                ));
+            }
+            html.push_str("</div>");
         }
     }
 

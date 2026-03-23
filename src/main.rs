@@ -377,6 +377,7 @@ async fn main() {
         .route("/random", get(random_burrow))
         .route("/discover", get(discover))
         .route("/rings", get(rings_page))
+        .route("/servers", get(servers_page))
         .route("/search", get(search_handler))
         .route("/search/index.json", get(search_index_json))
         .route("/ping", axum::routing::post(receive_ping))
@@ -651,6 +652,13 @@ async fn rings_page(headers: HeaderMap, State(state): State<AppState>) -> Html<S
     let burrows = list_burrows().await;
     let rings = load_all_rings().await;
     Html(render::rings_list_page(&rings, &burrows, &domain))
+}
+
+async fn servers_page(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let burrows = list_burrows().await;
+    let servers = load_servers().await;
+    Html(render::servers_page(&servers, &burrows, &domain))
 }
 
 async fn favicon_ico() -> impl IntoResponse {
@@ -1367,6 +1375,32 @@ fn xml_escape(s: &str) -> String {
 // ── Rings ───────────────────────────────────────────────────────
 
 #[derive(Debug, Clone)]
+pub struct ServerEntry {
+    pub url: String,
+    pub description: String,
+}
+
+async fn load_servers() -> Vec<ServerEntry> {
+    let mut servers = Vec::new();
+    if let Ok(content) = fs::read_to_string("servers.conf").await {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            // Format: gph://server.com   Description here
+            let parts: Vec<&str> = line.splitn(2, "   ").collect();
+            let url = parts[0].trim().to_string();
+            let desc = parts.get(1).map(|s| s.trim().to_string()).unwrap_or_default();
+            if !url.is_empty() {
+                servers.push(ServerEntry { url, description: desc });
+            }
+        }
+    }
+    servers
+}
+
+#[derive(Clone)]
 pub struct Ring {
     pub slug: String,
     pub title: String,

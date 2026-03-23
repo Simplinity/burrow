@@ -673,7 +673,13 @@ async fn favicon_ico() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "image/x-icon")], ICO)
 }
 
-async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state): State<AppState>) -> Response {
+#[derive(Deserialize)]
+struct BurrowParams {
+    slow: Option<u8>,
+}
+
+async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params): Query<BurrowParams>, State(state): State<AppState>) -> Response {
+    let slow = params.slow.unwrap_or(0) == 1;
     let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
 
@@ -736,7 +742,9 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state)
                     let all_rings = load_all_rings().await;
                     let rings = find_rings_for_burrow(&all_rings, burrow_name);
                     let series = detect_series(&p, &path).await;
-                    return Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref())).into_response();
+                    let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
+                    if slow { html = inject_slow_mode(html); }
+                    return Html(html).into_response();
                 }
             }
             if let Ok(p) = fs::canonicalize(&with_gph).await {
@@ -751,7 +759,9 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state)
                         let bookmarks = parse_bookmarks(&content);
                         return Html(render::bookmarks_page(&path, &bookmarks, &domain, accent.as_deref())).into_response();
                     }
-                    return Html(render::text_page(&path, filename, &content, &domain, accent.as_deref())).into_response();
+                    let mut html = render::text_page(&path, filename, &content, &domain, accent.as_deref());
+                    if slow { html = inject_slow_mode(html); }
+                    return Html(html).into_response();
                 }
             }
             return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
@@ -801,9 +811,17 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state)
             let all_rings = load_all_rings().await;
             let rings = find_rings_for_burrow(&all_rings, burrow_name);
             let series = detect_series(&canonical, &path).await;
-            Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref())).into_response()
+            let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
+            if slow { html = inject_slow_mode(html); }
+            Html(html).into_response()
         }
     }
+}
+
+const SLOW_CSS: &str = "<style>.reading{font-size:21px!important;line-height:1.9!important;max-width:580px!important;margin:0 auto!important}.reading p{margin:1.8em 0!important}.reading blockquote{margin:2em 0!important}.reading pre{margin:2em 0!important}.meta{margin-bottom:2em!important}</style>";
+
+fn inject_slow_mode(html: String) -> String {
+    html.replace("</head>", &format!("{}</head>", SLOW_CSS))
 }
 
 // ── Series Detection ─────────────────────────────────────────

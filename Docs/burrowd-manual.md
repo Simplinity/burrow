@@ -117,32 +117,61 @@ The file looks like this:
 
 domain = myhole.example.com
 port = 7070
+aliases = blog.example.com, old-domain.net
+tls_cert = /etc/letsencrypt/live/myhole.example.com/fullchain.pem
+tls_key = /etc/letsencrypt/live/myhole.example.com/privkey.pem
+gemini_port = 1965
 ```
 
-That's the whole config file. Two keys. We considered adding more options but got distracted reading about the Unix philosophy and never came back.
+We started with two keys. Then reality happened. We're not proud of six, but we're not adding a seventh. (Narrator: they will.)
 
 ### Configuration Reference
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `domain` | `localhost` | Your server's domain name. Shown in the address bar and breadcrumbs. Mostly cosmetic, entirely important for your sense of identity. |
-| `port` | `7070` | Port to listen on. 7070 because 70 was Gopher's port and we're exactly 100x better. (Citation needed.) |
+| `domain` | `localhost` | Your server's primary domain name. Shown in the address bar, breadcrumbs, RSS feeds, and the warm fuzzy feeling of having an identity on the internet. |
+| `port` | `7070` | Port to listen on. 7070 because 70 was Gopher's port and we're exactly 100x better. (Citation needed.) Set to `80` for bare HTTP in production — see HOSTING below. |
+| `aliases` | *(none)* | Comma-separated list of alternate domain names. The server reads the `Host` header and uses the matching alias for breadcrumbs, feed URLs, and canonical references. Your burrow, many doors. DNS is your problem. |
+| `tls_cert` | *(none)* | Path to a PEM certificate chain. If both `tls_cert` and `tls_key` are set, burrowd serves HTTPS. No Caddy. No nginx. Just burrowd and a certificate. |
+| `tls_key` | *(none)* | Path to the private key. Keep this file readable only by the burrowd user, or you'll have bigger problems than typography. |
+| `gemini_port` | *(none)* | Port for the Gemini protocol listener (typically `1965`). Requires TLS to be configured. Your `.gph` files are automatically converted to Gemtext. Because one protocol is never enough. |
 
 If `burrow.conf` doesn't exist, burrowd defaults to `localhost:7070`, which is fine for local development and existential crises.
 
-### Burrow Config (`.burrow`)
+### Custom Domains (Aliases)
 
-Each `~user/` directory can contain a `.burrow` file:
+Your burrow can answer to multiple domain names. Point DNS to your server, add them to the config:
+
+```conf
+domain = phlogosphere.net
+aliases = burrow.bruno.be, myburrow.com
+```
+
+When someone visits `burrow.bruno.be`, the breadcrumbs say `burrow.bruno.be`, the RSS feed URLs use `burrow.bruno.be`, and the search index references `burrow.bruno.be`. Same content, different door. The `domain` is canonical — aliases are vanity mirrors.
+
+No per-burrow custom domains (yet). No automatic SSL per alias (bring your own wildcard or multi-domain cert). No DNS management. You're an adult. You can edit a zone file.
+
+### Per-Burrow Config (`.burrow`)
+
+Each `~user/` directory (and its subdirectories) can contain a `.burrow` file:
 
 ```
 description = ITAD, web craft, en te veel meningen over typografie
 accent = #d35400
+title = Bruno's Hole
+sort = modified-desc
+pin = about.txt
 ```
 
 | Key | Description |
 |-----|-------------|
 | `description` | One-line description shown in directory listings and the sidebar. Keep it short. Think "dating profile bio," not "LinkedIn summary." |
-| `accent` | Custom accent color as a hex value. Changes links, icons, buttons, and that one scroll bar. Your burrow, your vibe. Defaults to teal (`#1a8a6a`) if absent, because we think teal is a good color and we're not sorry. |
+| `accent` | Custom accent color as a hex value (`#abc` or `#aabbcc`). Changes links, icons, buttons, and that one scroll bar. Your burrow, your vibe. Defaults to teal if absent, because we think teal is a good color and we're not sorry. |
+| `title` | Overrides the directory name in listings and page headings. For when `~bruno` doesn't capture the full scope of your existential ambitions. |
+| `sort` | Directory sort order: `name-asc` (default), `name-desc`, `modified-asc`, `modified-desc`. The phlog/ directory probably wants `modified-desc`. The gallery/ probably doesn't care. |
+| `pin` | Pin a file to the top of the directory listing, regardless of sort order. The equivalent of taping a note to the fridge. Only one pin per directory — we're minimalists, not Pinterest. |
+
+The `.burrow` file works in subdirectories too. Put one in `phlog/.burrow` with `sort = modified-desc` and your latest post rises to the top. Put one in `gallery/.burrow` with `title = The Gallery` and it shows up with a proper name instead of "gallery/" in the parent listing.
 
 ## RUNNING
 
@@ -157,7 +186,9 @@ burrowd
 #   Tunneling...
 #
 #   Domain:         myhole.example.com
-#   HTTPS gateway:  http://127.0.0.1:7070
+#   Aliases:        blog.example.com, old-domain.net
+#   HTTPS gateway:  http://0.0.0.0:7070
+#   LAN:            http://192.168.0.42:7070
 #   Burrow root:    ./burrows/
 #
 #   Press Ctrl+C to fill in the hole.
@@ -302,6 +333,93 @@ A: It's called "your terminal." `ls`, `cat`, `vim`. The admin panel that ships w
 **Q: Can I add custom CSS/themes?**
 A: You get one knob: `accent = #hexcolor` in your `.burrow` file. It changes the accent color across your entire burrow — links, icons, buttons, that progress bar we're still not sure about. That's it. No custom fonts, no background images, no `marquee` tags. The constraint *is* the design.
 
+## HOSTING — Running in Production
+
+So you've decided to face the internet. Brave. Here's how to take burrowd from `localhost` to a real server. We'll assume a fresh VPS (Hetzner, DigitalOcean, Linode — whatever gives you a public IP and SSH access).
+
+### The Absolute Minimum
+
+```bash
+# On your server:
+scp burrowd yourserver:/usr/local/bin/
+scp -r burrows/ yourserver:/srv/burrow/
+ssh yourserver
+cd /srv/burrow
+burrow server init --domain yoursite.com --port 80
+sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+burrowd
+```
+
+That's it. Your burrow is live on port 80. No nginx. No Docker. No Kubernetes. No "infrastructure as code." Just a binary, a directory, and a dream.
+
+The `setcap` line is the magic: it grants burrowd permission to bind to ports below 1024 (like 80) without running as root. This is the Unix equivalent of a hall pass. The binary keeps it. No `sudo` needed after that.
+
+### With HTTPS (recommended for the civilized)
+
+```bash
+# Get a certificate (Let's Encrypt via certbot)
+sudo apt install certbot
+sudo certbot certonly --standalone -d yoursite.com
+
+# Configure burrowd
+cat > burrow.conf << 'EOF'
+domain = yoursite.com
+port = 443
+tls_cert = /etc/letsencrypt/live/yoursite.com/fullchain.pem
+tls_key = /etc/letsencrypt/live/yoursite.com/privkey.pem
+EOF
+
+sudo setcap 'cap_net_bind_service=+ep' /usr/local/bin/burrowd
+burrowd
+```
+
+Now you're serving HTTPS on port 443 with a real certificate. The modern web, powered by four lines of config. You still need to renew the cert every 90 days (`certbot renew` in a cron job). We considered automating this but decided that's certbot's job, not ours.
+
+### With systemd (for servers that outlive your SSH session)
+
+A service file is included (`burrowd.service`):
+
+```bash
+sudo cp burrowd.service /etc/systemd/system/
+sudo systemctl enable burrowd
+sudo systemctl start burrowd
+```
+
+It runs as a `burrow` user (create one first: `sudo useradd -r -s /bin/false burrow`), restarts on failure, and sets `RUST_LOG=info` for access logging. Your server survives reboots, SSH disconnections, and mild existential crises.
+
+### With Docker (for people who enjoy layers)
+
+```bash
+docker build -t burrow .
+docker run -d -p 80:7070 -v /srv/burrow/burrows:/burrow/burrows burrow
+```
+
+The Dockerfile is a multi-stage Alpine build. The final image is about 15 MB. That's smaller than most hero images on modern landing pages.
+
+### Port 80 vs. Reverse Proxy
+
+You have two choices, and they're both fine:
+
+| Approach | When to use it |
+|----------|---------------|
+| **Direct (port 80/443)** | Single site, single binary, you want simplicity. burrowd handles everything. |
+| **Reverse proxy** | Multiple sites on one IP, or you want nginx/Caddy to handle TLS termination, HTTP→HTTPS redirect, rate limiting, etc. Put burrowd on port 7070 and proxy to it. |
+
+If you're running just Burrow on a VPS — go direct. If you're running Burrow alongside other things — use a reverse proxy. There is no third option. (There used to be a third option, but it involved Java and we don't talk about it.)
+
+### Access Logging
+
+burrowd logs all HTTP requests via `tower-http` and `tracing`. Control verbosity with `RUST_LOG`:
+
+```bash
+RUST_LOG=info burrowd       # default — method, path, status, latency
+RUST_LOG=debug burrowd      # verbose — headers, body size, timing
+RUST_LOG=warn burrowd       # quiet — errors and warnings only
+RUST_LOG=error burrowd      # silent — only errors
+```
+
+Logs go to stderr. Redirect to a file if you want history: `burrowd 2>> /var/log/burrow.log`. Or let systemd's journal handle it. We're not your parents.
+
 ## THE CLI — burrow(1)
 
 The server's partner in crime. All content management happens here.
@@ -323,12 +441,31 @@ burrow server init         Generate burrow.conf
 
 If there's only one burrow, the CLI uses it automatically. If there are several and you haven't explicitly switched, it reads `burrows/.burrow-active`. If that file doesn't exist either, it panics — politely, with a helpful error message, but it panics. Create a burrow. We believe in you.
 
+## THE BIG PICTURE
+
+Burrow is three things:
+
+1. **A server** (`burrowd`) — you're reading its manual. It serves plaintext content over HTTP, HTTPS, and Gemini. It has opinions about typography and none about your JavaScript framework.
+
+2. **A CLI** (`burrow`) — creates burrows, writes posts, manages guestbooks. The admin panel that ships with every Unix since 1971, slightly improved.
+
+3. **A protocol** (`gph://`) — the native Burrow wire format. Lighter than HTML, more structured than Gemini. Currently served through the HTTPS gateway; a native desktop client is coming.
+
+Together, they form a publishing platform for people who think the internet should be *readable*. No algorithms, no notifications, no engagement metrics, no dark patterns. Text on a screen. Links between pages. People writing for other people.
+
+If you want to understand *why* Burrow exists, read the concept document. If you want to understand *how* it works, keep reading this manual. If you want to understand *whether* it's for you — create a burrow, write something, and see if it feels like coming home.
+
+For the full philosophy, architecture, and roadmap: `/~burrow/concepts/` on any running Burrow server. It reads better in Burrow than in a Markdown file. We're biased.
+
 ## SEE ALSO
 
-- `burrow-concept.md` — the full vision document (warning: contains ambition)
+- `/~burrow/concepts/` — the full vision, served by Burrow itself (meta!)
+- `/~burrow/server/` — the server manual, as burrow articles
+- `burrow-concept.md` — the vision document in Markdown (for when the server is off)
 - `architecture.md` — how the pieces fit together (warning: contains ASCII diagrams)
+- `ideas-for-burrow.md` — 50 future feature ideas, each justified against the manifesto
 - Your favorite text editor — the real authoring tool
-- Your favorite RSS reader — for subscribing to `/~user/feed.xml`
+- Your favorite feed reader — for subscribing to `/~user/feed.xml` (RSS) or `/~user/atom.xml` (Atom)
 - RFC 1436 — the Gopher protocol spec, for historical context and mild nostalgia
 
 ## AUTHORS

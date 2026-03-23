@@ -49,14 +49,14 @@ burrow init bruno
 # Write a post (opens $EDITOR with today's date pre-filled)
 burrow new "Why I Left Medium"
 
-# Preview before publishing (works on _ drafts too)
-burrow preview _work-in-progress.txt
+# Edit an existing file
+burrow edit about.txt
 
 # List your burrow
 burrow ls
 burrow ls phlog/
 
-# Stats: files, size, latest post, disk usage
+# Stats: files, size, latest post
 burrow status
 ```
 
@@ -71,63 +71,10 @@ burrow init bob
 
 # Switch between them
 burrow switch alice
-burrow switch        # lists all burrows
-
-# Export a backup
-burrow export ~/backups/alice-2026-03.tar.gz
+burrow switch        # lists all burrows, ← marks the active one
 ```
 
-Each burrow is independent. Switch between them. Live your multitudes.
-
-### Search
-
-```bash
-# Search your active burrow
-burrow search "typography"
-
-# Search all burrows on the server
-burrow search "rust async" --all
-```
-
-Grep-style search with highlighted matches. Fast, local, no index needed.
-
-### Bookmarks
-
-```bash
-# Add a public bookmark
-burrow bookmark add https://100r.co -d "Hundred Rabbits — off-grid computing"
-burrow bookmark add /~maya/about -d "Maya's about page"
-
-# List your bookmarks
-burrow bookmark list
-
-# Remove by number
-burrow bookmark remove 3
-```
-
-Your bookmarks live at `/~you/bookmarks`. They're public. They're your taste, on display. Bookmark counts are the only ranking signal on the Discover page.
-
-### Rings (Webrings)
-
-```bash
-# Create a ring
-burrow ring create "Deep Web Craft" -d "Writers who care about the web as a medium"
-
-# Add members (local or remote)
-burrow ring add deep-web-craft /~maya
-burrow ring add deep-web-craft gph://tilde.town/~river
-
-# Show ring members
-burrow ring show deep-web-craft
-
-# List your rings
-burrow ring list
-
-# Remove a member
-burrow ring remove deep-web-craft /~maya
-```
-
-Rings span servers. A ring can link local burrows and `gph://` remote addresses. Navigation arrows appear at the bottom of every page for every ring member.
+Each burrow is independent. Switch between them. Live your multitudes. If there's only one burrow, the CLI uses it automatically. If there are several and you haven't switched, it reads `burrows/.burrow-active`. If that doesn't exist, it tells you to pick one. Politely.
 
 ### Guestbook
 
@@ -141,39 +88,6 @@ burrow guestbook show
 
 Visitors sign your guestbook at `/~you/guestbook` in the browser. The CLI lets you read entries. Because it's not the '90s internet without a guestbook.
 
-### Time Capsule
-
-```bash
-# Generate a year-in-review
-burrow timecapsule 2026
-```
-
-Produces a `timecapsule-2026.txt` with post counts, word totals, monthly activity bars, and a chronological index. Private nostalgia, automatically generated.
-
-### Remote Sync
-
-```bash
-# Push your burrow to a remote server
-burrow push user@phlogosphere.net:/srv/burrow/burrows/
-
-# Pull from remote
-burrow pull user@phlogosphere.net:/srv/burrow/burrows/~bruno/
-```
-
-Uses rsync over SSH. Your burrow is files. You copy them. That's the migration strategy.
-
-### Protocol Handler
-
-```bash
-# Register gph:// URL handler on your OS
-burrow register
-
-# Open a gph:// URL
-burrow open gph://phlogosphere.net/~bruno/about
-```
-
-On macOS, this creates a `.app` bundle. On Linux, a `.desktop` file. Click a `gph://` link anywhere on your system and Burrow handles it. We may have gotten carried away. We regret nothing.
-
 ### Server Management
 
 ```bash
@@ -181,7 +95,21 @@ On macOS, this creates a `.app` bundle. On Linux, a `.desktop` file. Click a `gp
 burrow server init --domain phlogosphere.net --port 7070
 ```
 
-Creates `burrow.conf` with your domain and port. The server reads this on startup.
+Creates `burrow.conf` with your domain, port, and optional aliases for custom domains. The server reads this on startup.
+
+### Coming to the CLI
+
+These features exist in the server but don't have CLI commands yet. They will:
+
+- **`burrow search`** — local grep across your burrow content
+- **`burrow bookmark`** — add/list/remove public bookmarks
+- **`burrow ring`** — create and manage webrings
+- **`burrow push` / `burrow pull`** — rsync-based remote sync
+- **`burrow export`** — tar.gz backup of your burrow
+- **`burrow preview`** — terminal preview of drafts (`_` prefixed files)
+- **`burrow timecapsule`** — yearly stats generation
+
+All of these work through the web interface today. The CLI commands will make them keyboard-accessible.
 
 ---
 

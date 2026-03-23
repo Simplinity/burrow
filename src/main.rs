@@ -15,6 +15,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tower_http::compression::CompressionLayer;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -384,7 +385,13 @@ async fn main() {
         .route("/ping", axum::routing::post(receive_ping))
         .route("/.well-known/{*path}", get(well_known))
         .route("/{*path}", get(serve_burrow).post(post_guestbook))
-        .layer(TraceLayer::new_for_http());
+        .layer(TraceLayer::new_for_http())
+        .layer(SetResponseHeaderLayer::overriding(
+            header::HeaderName::from_static("content-security-policy"),
+            header::HeaderValue::from_static(
+                "default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; frame-ancestors 'none'"
+            ),
+        ));
 
     let app = if cfg.compression {
         app.layer(CompressionLayer::new()).with_state(state.clone())

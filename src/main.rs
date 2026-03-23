@@ -756,6 +756,17 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
         return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
     }
 
+    // OPML export: bookmarks as RSS subscriptions
+    if path.ends_with("/subscriptions.opml") {
+        let burrow_name = path.split('/').next().unwrap_or("");
+        let burrow_dir = path::PathBuf::from("burrows").join(burrow_name);
+        if fs::try_exists(&burrow_dir).await.unwrap_or(false) && burrow_name.starts_with('~') {
+            let opml = generate_opml(burrow_name, &burrow_dir).await;
+            return ([(header::CONTENT_TYPE, "text/x-opml; charset=utf-8")], opml).into_response();
+        }
+        return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
+    }
+
     // Draft visibility: block any path segment starting with _ or .
     if path.split('/').any(|seg| seg.starts_with('_') || seg.starts_with('.')) {
         return (StatusCode::NOT_FOUND, Html(render::not_found_page(&path, &domain))).into_response();
@@ -1447,6 +1458,60 @@ async fn generate_atom_feed(burrow_name: &str, burrow_dir: &path::Path, domain: 
         updated,
         xml_escape(&desc),
         entries_xml,
+    )
+}
+
+async fn generate_opml(burrow_name: &str, burrow_dir: &path::Path) -> String {
+    let bookmarks_path = burrow_dir.join("bookmarks.gph");
+    let mut outlines = String::new();
+
+    if let Ok(content) = fs::read_to_string(&bookmarks_path).await {
+        for line in content.lines() {
+            // Format: → URL   description · date
+            // or:     /~user/path   description · date
+            let rest = if let Some(r) = line.strip_prefix("→ ").or_else(|| line.strip_prefix("→ ")) {
+                r
+            } else {
+                continue;
+            };
+
+            // Split on three spaces to separate URL from description
+            let (url, desc) = if let Some(idx) = rest.find("   ") {
+                (rest[..idx].trim(), rest[idx+3..].trim())
+            } else {
+                (rest.trim(), "")
+            };
+
+            // Only export external URLs
+            if !url.starts_with("http") {
+                continue;
+            }
+
+            // Strip date suffix (· 2026-03-19) from description
+            let desc = desc.split(" · ").next().unwrap_or(desc);
+
+            outlines.push_str(&format!(
+                "      <outline text=\"{}\" type=\"rss\" xmlUrl=\"{}\" htmlUrl=\"{}\"/>\n",
+                xml_escape(if desc.is_empty() { url } else { desc }),
+                xml_escape(url),
+                xml_escape(url),
+            ));
+        }
+    }
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>{}'s Bookmarks</title>
+  </head>
+  <body>
+    <outline text="Bookmarks">
+{}    </outline>
+  </body>
+</opml>"#,
+        xml_escape(burrow_name),
+        outlines,
     )
 }
 

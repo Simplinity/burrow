@@ -808,7 +808,8 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
                     let all_rings = load_all_rings().await;
                     let rings = find_rings_for_burrow(&all_rings, burrow_name);
                     let series = detect_series(&p, &path).await;
-                    let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
+                    let mdate = file_modified_date(&p).await;
+                    let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
                     if slow { html = inject_slow_mode(html); }
                     return html_response_with_etag(&headers, html, etag);
                 }
@@ -891,7 +892,8 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params
             let all_rings = load_all_rings().await;
             let rings = find_rings_for_burrow(&all_rings, burrow_name);
             let series = detect_series(&canonical, &path).await;
-            let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref());
+            let mdate = file_modified_date(&canonical).await;
+            let mut html = render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref(), mdate.as_deref());
             if slow { html = inject_slow_mode(html); }
             html_response_with_etag(&headers, html, etag)
         }
@@ -1072,6 +1074,13 @@ fn html_response_with_etag(_headers: &HeaderMap, html: String, etag: Option<Stri
         response.headers_mut().insert(header::ETAG, header::HeaderValue::from_str(&etag_val).unwrap());
     }
     response
+}
+
+async fn file_modified_date(path: &path::Path) -> Option<String> {
+    let meta = fs::metadata(path).await.ok()?;
+    let modified = meta.modified().ok()?;
+    let dt: chrono::DateTime<Local> = modified.into();
+    Some(dt.format("%Y-%m-%d").to_string())
 }
 
 async fn read_file_checked(path: &path::Path) -> String {

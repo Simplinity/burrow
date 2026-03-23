@@ -248,12 +248,12 @@ pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, entries: &
 }
 
 pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
-    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent, None)
+    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent, None, None)
 }
 
 use crate::SeriesInfo;
 
-pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>) -> String {
+pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>, last_modified: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);
 
     // Detect "Inspired by" convention: first non-empty line starting with "← /~"
@@ -292,8 +292,12 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
         ));
     }
 
+    let modified_str = last_modified
+        .map(|d| format!(" · modified {}", d))
+        .unwrap_or_default();
+
     html.push_str(&format!(r#"<div class="reading">
-<div class="meta">~{read_min} min read · {words} words{series_meta}</div>
+<div class="meta">~{read_min} min read · {words} words{series_meta}{modified_str}</div>
 {rendered}
 </div>"#));
 

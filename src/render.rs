@@ -655,11 +655,18 @@ fn build_crumbs(path: &str, domain: &str) -> String {
 
 pub fn render_gph(content: &str) -> String {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let content = content.replace("@today", &today);
     let mut html = String::new();
     let mut in_code = false;
 
-    for line in content.lines() {
+    for raw_line in content.lines() {
+        // Only expand @today outside code blocks
+        let owned;
+        let line = if !in_code && !raw_line.starts_with("  ") {
+            owned = raw_line.replace("@today", &today);
+            owned.as_str()
+        } else {
+            raw_line
+        };
         if !in_code && line.starts_with("  ") {
             html.push_str("<pre>");
             html.push_str(&html_escape(line.trim_start()));
@@ -847,11 +854,17 @@ pub fn discover_page(burrows: &[BurrowEntry], latest_posts: &[(String, String, S
 
 pub fn render_gph_to_gmi(content: &str) -> String {
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
-    let content = content.replace("@today", &today);
     let mut gmi = String::new();
     let mut in_code = false;
 
-    for line in content.lines() {
+    for raw_line in content.lines() {
+        let owned;
+        let line = if !in_code && !raw_line.starts_with("  ") {
+            owned = raw_line.replace("@today", &today);
+            owned.as_str()
+        } else {
+            raw_line
+        };
         if !in_code && line.starts_with("  ") {
             gmi.push_str("```\n");
             gmi.push_str(line.trim_start());

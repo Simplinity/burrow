@@ -4,19 +4,15 @@ Three small features that make writing in Burrow a little more pleasant. None of
 
 ---
 
-## @today — inline date stamps
+## Inline date stamps
 
-Write @today anywhere in your text and the server renders it as today's date:
+The magic word is shown in the code block below. Write it anywhere in your text and the server renders it as today's date:
 
-  Last updated: @today
+  @today
 
-Becomes:
+That code block stays literal. But outside a code block, the same word becomes the current date. Try it in a paragraph — it expands to the date you're reading this. The file on disk still contains the original text. The expansion only happens when the server renders the page. One magic word. No template engine. No build step.
 
-  Last updated: 2026-03-23
-
-The file itself still contains the literal text @today. Open it in vim, cat, or any text editor — you see @today. The expansion only happens when the server renders the page. One magic word. No template engine. No build step.
-
-Handy for "last updated" lines, colophon timestamps, or anywhere you want a date without remembering what day it is.
+Handy for "last updated" lines, colophon timestamps, or anywhere you want a date without remembering what day it is. To show the literal word without expansion, put it in a code block (indent with two spaces).
 
 ---
 

@@ -308,20 +308,13 @@ impl SearchIndex {
             let line_lower = line.to_lowercase();
             if terms.iter().any(|t| line_lower.contains(t)) {
                 let trimmed = line.trim();
-                return if trimmed.len() > 150 {
-                    format!("{}...", &trimmed[..147])
-                } else {
-                    trimmed.to_string()
-                };
+                return truncate_chars(trimmed, 150);
             }
         }
         // Fallback: first non-empty line after title
         content.lines().skip(1)
             .find(|l| !l.trim().is_empty())
-            .map(|l| {
-                let t = l.trim();
-                if t.len() > 150 { format!("{}...", &t[..147]) } else { t.to_string() }
-            })
+            .map(|l| truncate_chars(l.trim(), 150))
             .unwrap_or_default()
     }
 }
@@ -913,6 +906,16 @@ fn extract_series_number(stem: &str) -> Option<(&str, usize)> {
         }
     }
     None
+}
+
+/// Truncate a string at a character boundary (safe for multi-byte UTF-8)
+fn truncate_chars(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max_chars - 3).collect();
+        format!("{}...", truncated)
+    }
 }
 
 const MAX_BINARY_SIZE: u64 = 2_097_152; // 2 MB for images/binaries

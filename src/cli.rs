@@ -110,6 +110,11 @@ enum Commands {
     },
     /// Register gph:// protocol handler on this system
     Register,
+    /// Lint your burrow for common errors
+    Lint {
+        /// Optional path to lint (default: entire burrow)
+        path: Option<String>,
+    },
     /// Server management
     Server {
         #[command(subcommand)]
@@ -206,6 +211,7 @@ fn main() {
         Commands::Push { remote } => cmd_push(&burrows_root, &remote),
         Commands::Pull { remote } => cmd_pull(&burrows_root, &remote),
         Commands::Colophon => cmd_colophon(&burrows_root),
+        Commands::Lint { path } => cmd_lint(&burrows_root, path.as_deref()),
         Commands::ReadLater { url, desc } => cmd_read_later(&burrows_root, &url, desc.as_deref()),
         Commands::ReadingList => cmd_reading_list(&burrows_root),
         Commands::Timecapsule { year } => cmd_timecapsule(&burrows_root, year),
@@ -2015,4 +2021,151 @@ fn latest_phlog_post(phlog_dir: &Path) -> Option<String> {
         .collect();
     posts.sort();
     posts.last().cloned()
+}
+
+// ── Lint ─────────────────────────────────────────────────────────
+
+const MAX_TEXT_SIZE: u64 = 65_536; // 64 KB
+
+fn cmd_lint(burrows_root: &Path, path: Option<&str>) {
+    let active = find_active_burrow(burrows_root);
+    let burrow_dir = match &active {
+        Some(name) => burrows_root.join(name),
+        None => {
+            println!("  No active burrow. Run: burrow init <name>");
+            return;
+        }
+    };
+
+    let target = if let Some(p) = path {
+        let full = burrow_dir.join(p);
+        if !full.exists() {
+            println!("  \x1b[31m✗\x1b[0m File not found: {}", p);
+            return;
+        }
+        full
+    } else {
+        burrow_dir.clone()
+    };
+
+    let mut warnings: Vec<String> = Vec::new();
+    let mut files_checked = 0;
+
+    let files = collect_lint_files(&target);
+    for file in &files {
+        files_checked += 1;
+        let relative = file.strip_prefix(&burrow_dir).unwrap_or(file);
+        let rel_str = relative.to_string_lossy();
+
+        // Check file size
+        if let Ok(meta) = fs::metadata(file) {
+            if meta.len() > MAX_TEXT_SIZE {
+                warnings.push(format!(
+                    "{}  \x1b[33m{:.1} KB\x1b[0m — exceeds 64 KB limit (won't be served)",
+                    rel_str, meta.len() as f64 / 1024.0
+                ));
+            }
+        }
+
+        // Read content
+        let content = match fs::read_to_string(file) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Check: no heading
+        let has_heading = content.lines().any(|l| l.starts_with("# "));
+        if !has_heading {
+            warnings.push(format!(
+                "{}  \x1b[33mno heading\x1b[0m — file has no # heading (will show blank in listings)",
+                rel_str
+            ));
+        }
+
+        // Check: broken internal links
+        for (line_num, line) in content.lines().enumerate() {
+            let line_num = line_num + 1;
+
+            // Internal links: /~user/path or /~user/path   description
+            if line.starts_with("/~") {
+                let link = line.splitn(2, "   ").next().unwrap_or("").trim();
+                // Check if the file exists (try plain, .txt, .gph)
+                let link_path = burrows_root.join(link.trim_start_matches('/'));
+                if !link_path.exists()
+                    && !link_path.with_extension("txt").exists()
+                    && !link_path.with_extension("gph").exists()
+                    && !link_path.is_dir()
+                {
+                    warnings.push(format!(
+                        "{}:{line_num}  \x1b[31mbroken link\x1b[0m — {} does not exist",
+                        rel_str, link
+                    ));
+                }
+            }
+
+            // "Inspired by" links
+            if line.starts_with("← /") {
+                let link = line.strip_prefix("← ").unwrap_or("").trim();
+                let link_path = burrows_root.join(link.trim_start_matches('/'));
+                if !link_path.exists()
+                    && !link_path.with_extension("txt").exists()
+                    && !link_path.with_extension("gph").exists()
+                {
+                    warnings.push(format!(
+                        "{}:{line_num}  \x1b[31mbroken inspiration link\x1b[0m — {} does not exist",
+                        rel_str, link
+                    ));
+                }
+            }
+        }
+
+        // Check: empty file
+        if content.trim().is_empty() {
+            warnings.push(format!(
+                "{}  \x1b[33mempty\x1b[0m — file has no content",
+                rel_str
+            ));
+        }
+    }
+
+    // Report
+    println!();
+    if warnings.is_empty() {
+        println!("  \x1b[32m✓\x1b[0m {} files checked — no issues found", files_checked);
+    } else {
+        println!("  \x1b[1m{} issues found\x1b[0m in {} files:\n", warnings.len(), files_checked);
+        for w in &warnings {
+            println!("  \x1b[33m⚠\x1b[0m  {}", w);
+        }
+    }
+    println!();
+}
+
+fn collect_lint_files(path: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    if path.is_file() {
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        if (name.ends_with(".txt") || name.ends_with(".gph"))
+            && !name.starts_with('.')
+            && !name.starts_with('_')
+        {
+            files.push(path.to_path_buf());
+        }
+    } else if path.is_dir() {
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') || name.starts_with('_') {
+                    continue;
+                }
+                if entry.path().is_dir() {
+                    files.extend(collect_lint_files(&entry.path()));
+                } else if name.ends_with(".txt") || name.ends_with(".gph") {
+                    files.push(entry.path());
+                }
+            }
+        }
+    }
+    files.sort();
+    files
 }

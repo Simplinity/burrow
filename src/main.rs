@@ -34,11 +34,11 @@ const FIREHOSE_PAGE_SIZE: usize = 20;
 
 #[derive(Clone)]
 struct AppState {
-    config: Arc<config::ServerConfig>,
+    config: Arc<std::sync::RwLock<Arc<config::ServerConfig>>>,
     domain: Arc<String>,
     guestbook_limiter: Arc<Mutex<HashMap<IpAddr, Instant>>>,
     started_at: Instant,
-    search_index: Arc<SearchIndex>,
+    search_index: Arc<std::sync::RwLock<Arc<SearchIndex>>>,
 }
 
 // ── Search Index ────────────────────────────────────────────────
@@ -361,11 +361,11 @@ async fn main() {
     let search_index = SearchIndex::build().await;
 
     let state = AppState {
-        config: Arc::new(cfg.clone()),
+        config: Arc::new(std::sync::RwLock::new(Arc::new(cfg.clone()))),
         domain: Arc::new(cfg.domain.clone()),
         guestbook_limiter: Arc::new(Mutex::new(HashMap::new())),
         started_at: Instant::now(),
-        search_index: Arc::new(search_index),
+        search_index: Arc::new(std::sync::RwLock::new(Arc::new(search_index))),
     };
 
     let app = Router::new()
@@ -419,6 +419,27 @@ async fn main() {
         send_outgoing_pings(&ping_domain).await;
     });
 
+    // SIGHUP handler: reload config and search index without restart
+    #[cfg(unix)]
+    {
+        let reload_state = state.clone();
+        tokio::spawn(async move {
+            use tokio::signal::unix::{signal, SignalKind};
+            let mut hup = signal(SignalKind::hangup()).expect("failed to listen for SIGHUP");
+            loop {
+                hup.recv().await;
+                tracing::info!("SIGHUP received — reloading config and search index");
+                // Reload config
+                let new_cfg = config::ServerConfig::load();
+                *reload_state.config.write().unwrap() = Arc::new(new_cfg);
+                // Rebuild search index
+                let new_index = SearchIndex::build().await;
+                *reload_state.search_index.write().unwrap() = Arc::new(new_index);
+                tracing::info!("Reload complete");
+            }
+        });
+    }
+
     if cfg.has_tls() {
         let cert_path = cfg.tls_cert.as_ref().unwrap();
         let key_path = cfg.tls_key.as_ref().unwrap();
@@ -459,7 +480,7 @@ async fn main() {
 }
 
 async fn home(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     Html(render::home_page(&burrows, &domain))
 }
@@ -512,7 +533,7 @@ struct PaginationParams {
 }
 
 async fn firehose(headers: HeaderMap, State(state): State<AppState>, Query(params): Query<PaginationParams>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let mut posts: Vec<(String, String, String, String)> = Vec::new();
 
@@ -566,7 +587,7 @@ async fn random_burrow() -> Response {
 }
 
 async fn discover(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
 
     // Gather all posts across all burrows
@@ -621,26 +642,27 @@ struct SearchParams {
 }
 
 async fn search_handler(headers: HeaderMap, State(state): State<AppState>, Query(params): Query<SearchParams>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let query = params.q.unwrap_or_default();
 
     let results = if query.is_empty() {
         Vec::new()
     } else {
-        state.search_index.search(&query)
+        state.search_index.read().unwrap().search(&query)
     };
 
     Html(render::search_page(&query, &results, &burrows, &domain))
 }
 
 async fn search_index_json(headers: HeaderMap, State(state): State<AppState>) -> impl IntoResponse {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let mut json = String::from("{\"version\":1,\"server\":\"");
     json.push_str(&domain.replace('"', "\\\""));
     json.push_str("\",\"documents\":[");
 
-    for (i, doc) in state.search_index.docs.iter().enumerate() {
+    let idx = state.search_index.read().unwrap().clone();
+    for (i, doc) in idx.docs.iter().enumerate() {
         if i > 0 { json.push(','); }
         json.push_str(&format!(
             "{{\"path\":\"{}\",\"title\":\"{}\",\"author\":\"{}\",\"type\":\"{}\",\"date\":\"{}\",\"words\":{}}}",
@@ -658,14 +680,14 @@ async fn search_index_json(headers: HeaderMap, State(state): State<AppState>) ->
 }
 
 async fn rings_page(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let rings = load_all_rings().await;
     Html(render::rings_list_page(&rings, &burrows, &domain))
 }
 
 async fn servers_page(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let servers = load_servers().await;
     Html(render::servers_page(&servers, &burrows, &domain))
@@ -704,7 +726,7 @@ struct BurrowParams {
 
 async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, Query(params): Query<BurrowParams>, State(state): State<AppState>) -> Response {
     let slow = params.slow.unwrap_or(0) == 1;
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
     let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
 
     // Virtual routes: feeds are generated, not real files
@@ -2001,7 +2023,7 @@ async fn post_guestbook(
     State(state): State<AppState>,
     Form(form): Form<GuestbookForm>,
 ) -> Response {
-    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
+    let domain = state.config.read().unwrap().resolve_domain(extract_host(&headers).as_deref());
 
     // Rate limit: one guestbook post per GUESTBOOK_RATE_SECS per IP
     {

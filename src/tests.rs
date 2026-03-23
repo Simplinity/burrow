@@ -73,6 +73,34 @@ fn render_gph_expands_at_today() {
 }
 
 #[test]
+fn extract_inspired_by_detects_first_line() {
+    let content = "← /~maya/phlog/on-digital-minimalism\n\n# My Response\n\nSome text.";
+    let (inspired, remaining) = render::extract_inspired_by(content);
+    assert!(inspired.is_some());
+    let (path, author) = inspired.unwrap();
+    assert_eq!(path, "/~maya/phlog/on-digital-minimalism");
+    assert_eq!(author, "~maya");
+    assert!(!remaining.contains("← /~maya"));
+    assert!(remaining.contains("# My Response"));
+}
+
+#[test]
+fn extract_inspired_by_ignores_non_matching() {
+    let content = "# Normal Post\n\nNo inspiration line here.";
+    let (inspired, remaining) = render::extract_inspired_by(content);
+    assert!(inspired.is_none());
+    assert_eq!(remaining, content);
+}
+
+#[test]
+fn extract_inspired_by_skips_empty_lines() {
+    let content = "\n\n← /~bruno/about\n\n# Post";
+    let (inspired, _) = render::extract_inspired_by(content);
+    assert!(inspired.is_some());
+    assert_eq!(inspired.unwrap().1, "~bruno");
+}
+
+#[test]
 fn extract_series_number_works() {
     assert_eq!(extract_series_number("part-01"), Some(("part-", 1)));
     assert_eq!(extract_series_number("part-12"), Some(("part-", 12)));

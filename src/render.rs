@@ -213,9 +213,13 @@ use crate::SeriesInfo;
 
 pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>) -> String {
     let crumbs = build_crumbs(path, domain);
-    let words = content.split_whitespace().count();
+
+    // Detect "Inspired by" convention: first non-empty line starting with "← /~"
+    let (inspired_by, render_content) = extract_inspired_by(content);
+
+    let words = render_content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
-    let rendered = render_gph(content);
+    let rendered = render_gph(&render_content);
 
     let series_meta = if let Some(s) = series {
         format!(" · Part {} of {}", s.current, s.total)
@@ -226,8 +230,18 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
     let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
     html.push_str(&format!(r#"<div class="progress"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
-<div class="reading">
+<div class="crumbs" style="margin-top:24px;">{crumbs}</div>"#));
+
+    // Render "Inspired by" block if present
+    if let Some((inspired_path, inspired_author)) = &inspired_by {
+        html.push_str(&format!(
+            r#"<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:12px;padding:8px 14px;border-left:3px solid var(--faint);">Inspired by <a href="{}" style="color:var(--accent);">{}</a></div>"#,
+            html_escape_attr(inspired_path),
+            html_escape(inspired_author)
+        ));
+    }
+
+    html.push_str(&format!(r#"<div class="reading">
 <div class="meta">~{read_min} min read · {words} words{series_meta}</div>
 {rendered}
 </div>"#));
@@ -651,6 +665,38 @@ fn build_crumbs(path: &str, domain: &str) -> String {
         html.push_str(&format!(r#" / <a href="{}">{}</a>"#, html_escape(&acc), html_escape(part)));
     }
     html
+}
+
+/// Extract "Inspired by" convention from content.
+/// If the first non-empty line starts with "← /", it's an inspiration link.
+/// Returns (Some((path, display_name)), remaining_content) or (None, original_content).
+pub fn extract_inspired_by(content: &str) -> (Option<(String, String)>, String) {
+    for (i, line) in content.lines().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        // First non-empty line — check if it starts with "← /"
+        if let Some(rest) = line.trim().strip_prefix("← ") {
+            let path = rest.trim();
+            if path.starts_with('/') {
+                // Extract author from path: /~maya/phlog/post → ~maya
+                let author = path.split('/')
+                    .find(|s| s.starts_with('~'))
+                    .unwrap_or(path)
+                    .to_string();
+                // Remove this line from content
+                let remaining: Vec<&str> = content.lines()
+                    .enumerate()
+                    .filter(|(j, _)| *j != i)
+                    .map(|(_, l)| l)
+                    .collect();
+                return (Some((path.to_string(), author)), remaining.join("\n"));
+            }
+        }
+        // First non-empty line doesn't match — no inspired-by
+        break;
+    }
+    (None, content.to_string())
 }
 
 pub fn render_gph(content: &str) -> String {

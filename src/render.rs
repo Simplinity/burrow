@@ -1,4 +1,4 @@
-use crate::{BookmarkEntry, BurrowEntry, EntryType, GalleryPiece, GuestbookEntry, Mention, Ring, SearchResult, ring_neighbors, ring_member_href};
+use crate::{BurrowEntry, EntryType, GuestbookEntry};
 
 const CSS: &str = r#"
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Literata:ital,wght@0,400;0,500;1,400&display=swap');
@@ -54,32 +54,33 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 @media(max-width:700px){.sidebar{display:none}.main{padding:20px 16px}}
 "#;
 
-fn head_with_accent(title: &str, addr: &str, domain: &str, accent: Option<&str>) -> String {
+pub fn accent_style(accent: Option<&str>) -> String {
+    match accent {
+        Some(color) => format!(
+            r#"<style>:root{{--accent:{}}}@media(prefers-color-scheme:dark){{:root{{--accent:{}}}}}</style>"#,
+            html_escape_attr(color), html_escape_attr(color)
+        ),
+        None => String::new(),
+    }
+}
+
+fn head(title: &str, addr: &str, domain: &str) -> String {
     let title = html_escape(title);
     let addr = html_escape(addr);
     let domain = html_escape(domain);
-    let accent_css = match accent {
-        Some(color) => format!("\n<style>:root{{--accent:{}}}@media(prefers-color-scheme:dark){{:root{{--accent:{}}}}}</style>", html_escape(color), html_escape(color)),
-        None => String::new(),
-    };
     // Extract burrow name from addr for RSS feed link (e.g. "/~bruno/phlog" → "/~bruno/feed.xml")
     let rss_href = addr.split('/').nth(1)
         .filter(|s| s.starts_with('~'))
         .map(|b| format!("/{}/feed.xml", b))
         .unwrap_or_else(|| "/feed.xml".to_string());
-    let atom_href = addr.split('/').nth(1)
-        .filter(|s| s.starts_with('~'))
-        .map(|b| format!("/{}/atom.xml", b))
-        .unwrap_or_else(|| "/atom.xml".to_string());
     format!(r#"<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title} — Burrow</title>
-<style>{CSS}</style>{accent_css}
+<style>{CSS}</style>
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{rss_href}">
-<link rel="alternate" type="application/atom+xml" title="Atom Feed" href="{atom_href}">
 </head>
 <body>
 <div class="topbar">
@@ -88,10 +89,6 @@ fn head_with_accent(title: &str, addr: &str, domain: &str, accent: Option<&str>)
     <span style="color:var(--muted)">gph://</span><span class="host">{domain}</span>{addr}
   </div>
 </div>"#)
-}
-
-fn head(title: &str, addr: &str, domain: &str) -> String {
-    head_with_accent(title, addr, domain, None)
 }
 
 fn footer(domain: &str) -> String {
@@ -113,17 +110,10 @@ fn sidebar(active: &str, entries: &[BurrowEntry]) -> String {
             path = html_escape(&e.path), name = html_escape(&e.name), cls = cls
         ));
     }
-    let discover_cls = if active == "/discover" { " active" } else { "" };
-    let firehose_cls = if active == "/firehose" { " active" } else { "" };
-    let rings_cls = if active == "/rings" { " active" } else { "" };
-    let search_cls = if active == "/search" { " active" } else { "" };
-    html.push_str(&format!(r#"<div class="sb-label">Explore</div>
-<a class="sb-item{search_cls}" href="/search"><span class="sb-icon">?</span>Search</a>
-<a class="sb-item{discover_cls}" href="/discover"><span class="sb-icon">◊</span>Discover</a>
-<a class="sb-item{firehose_cls}" href="/firehose"><span class="sb-icon">≡</span>Firehose</a>
-<a class="sb-item{rings_cls}" href="/rings"><span class="sb-icon">◎</span>Rings</a>
-<a class="sb-item" href="/random"><span class="sb-icon">↻</span>Random</a>
-</div>"#));
+    html.push_str(r#"<div class="sb-label">Discover</div>
+<a class="sb-item" href="javascript:void(0)"><span class="sb-icon">?</span>Veronica-NG</a>
+<a class="sb-item" href="javascript:void(0)"><span class="sb-icon">*</span>Rings</a>
+</div>"#);
     html
 }
 
@@ -170,91 +160,40 @@ pub fn home_page(burrows: &[BurrowEntry], domain: &str) -> String {
     html
 }
 
-pub fn directory_page(path: &str, title: Option<&str>, entries: &[BurrowEntry], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
+pub fn directory_page(path: &str, entries: &[BurrowEntry], burrows: &[BurrowEntry], domain: &str) -> String {
     let crumbs = build_crumbs(path, domain);
-    let display_title = title.unwrap_or(path);
     let desc = entries.first().map(|_| "").unwrap_or("");
     let addr = format!("/{}", path);
 
-    let mut html = head_with_accent(display_title, &addr, domain, accent);
+    let mut html = head(path, &addr, domain);
     html.push_str(&format!(r#"<div class="container">{}<div class="main">
 <div class="crumbs">{}</div>
 <h1>{}/</h1>
 <div class="subtitle">{}</div>
 {}</div></div>"#,
         sidebar(&format!("/{}", path.split('/').next().unwrap_or("")), burrows),
-        crumbs, html_escape(display_title), desc,
+        crumbs, html_escape(path), desc,
         render_entries(entries),
     ));
     html.push_str(&footer(domain));
     html
 }
 
-pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
-    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent)
-}
-
-pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>) -> String {
+pub fn text_page(path: &str, filename: &str, content: &str, domain: &str) -> String {
     let crumbs = build_crumbs(path, domain);
     let words = content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
     let rendered = render_gph(content);
 
-    let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
+    let mut html = head(filename, &format!("/{}", path), domain);
     html.push_str(&format!(r#"<div class="progress" id="prog"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
 <div class="meta">~{read_min} min read · {words} words</div>
 {rendered}
+</div>
 </div>"#));
-
-    // Ring navigation
-    for ring in rings {
-        let (prev, next) = ring_neighbors(ring, current_burrow);
-        html.push_str(r#"<div style="margin:24px 0 8px;padding:12px 20px;background:var(--faint);border-radius:8px;font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between;align-items:center;font-size:13px;">"#);
-        if let Some(p) = &prev {
-            html.push_str(&format!(
-                r#"<a href="{}" style="color:var(--accent);text-decoration:none;">← Previous</a>"#,
-                html_escape(&ring_member_href(p))
-            ));
-        } else {
-            html.push_str("<span></span>");
-        }
-        html.push_str(&format!(
-            r#"<span style="color:var(--muted);">◎ {}</span>"#,
-            html_escape(&ring.title)
-        ));
-        if let Some(n) = &next {
-            html.push_str(&format!(
-                r#"<a href="{}" style="color:var(--accent);text-decoration:none;">Next →</a>"#,
-                html_escape(&ring_member_href(n))
-            ));
-        } else {
-            html.push_str("<span></span>");
-        }
-        html.push_str("</div>");
-    }
-
-    // Mentions section
-    if !mentions.is_empty() {
-        html.push_str(r#"<div style="margin:32px 0 24px;padding:16px 20px;background:var(--faint);border-radius:8px;font-family:'JetBrains Mono',monospace;">"#);
-        html.push_str(&format!(
-            r#"<div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:10px;">Mentioned by · {}</div>"#,
-            if mentions.len() == 1 { "1 post".to_string() } else { format!("{} posts", mentions.len()) }
-        ));
-        for m in mentions {
-            html.push_str(&format!(
-                r#"<a href="{path}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;color:var(--text);text-decoration:none;"><span style="color:var(--accent);">←</span><span>{title}</span><span style="color:var(--muted);font-size:12px;">({burrow})</span></a>"#,
-                path = html_escape(&m.source_path),
-                title = html_escape(&m.source_title),
-                burrow = html_escape(&m.source_burrow),
-            ));
-        }
-        html.push_str("</div>");
-    }
-
-    html.push_str("</div>");
     html.push_str(&footer(domain));
     html.replace("</body></html>", r#"<script>
 window.addEventListener('scroll',()=>{
@@ -277,11 +216,11 @@ pub fn not_found_page(path: &str, domain: &str) -> String {
     html
 }
 
-pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str, accent: Option<&str>) -> String {
+pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str) -> String {
     let crumbs = build_crumbs(path, domain);
     let burrow_name = path.split('/').next().unwrap_or(path);
 
-    let mut html = head_with_accent("Guestbook", &format!("/{}", path), domain, accent);
+    let mut html = head("Guestbook", &format!("/{}", path), domain);
     html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
@@ -322,275 +261,6 @@ pub fn guestbook_page(path: &str, entries: &[GuestbookEntry], domain: &str, acce
                 html_escape(&entry.name),
                 html_escape(&entry.date),
                 html_escape(&entry.message),
-            ));
-        }
-    }
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn search_page(query: &str, results: &[SearchResult], burrows: &[BurrowEntry], domain: &str) -> String {
-    let mut html = head("Search", "/search", domain);
-
-    // Search-specific CSS
-    html.push_str(r#"<style>
-.search-box{display:flex;gap:8px;margin-bottom:24px}
-.search-input{flex:1;padding:10px 14px;background:var(--faint);border:1px solid var(--faint);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text)}
-.search-input:focus{outline:none;border-color:var(--accent)}
-.search-btn{padding:10px 20px;background:var(--accent);color:var(--surface);border:none;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;cursor:pointer}
-.search-result{padding:12px;border-radius:6px;margin-bottom:8px;transition:background 0.15s}
-.search-result:hover{background:var(--faint)}
-.sr-title{font-size:14px;font-weight:500;color:var(--accent);text-decoration:none;display:block;margin-bottom:4px}
-.sr-title:hover{text-decoration:underline}
-.sr-meta{font-size:12px;color:var(--muted);margin-bottom:4px}
-.sr-snippet{font-size:13px;color:var(--text);line-height:1.5}
-.sr-tag{display:inline-block;font-size:11px;padding:1px 6px;background:var(--faint);border-radius:3px;color:var(--muted);margin-right:4px}
-</style>"#);
-
-    html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs"><a href="/">{}</a> / search</div>
-<h1>Veronica-NG</h1>
-<div class="subtitle">Search across all burrows</div>
-
-<form method="get" action="/search" class="search-box">
-  <input type="text" name="q" class="search-input" value="{}" placeholder="Search... (try author:~bruno type:phlog fresh:30)">
-  <button type="submit" class="search-btn">Search</button>
-</form>"#,
-        sidebar("/search", burrows),
-        html_escape(domain),
-        html_escape(query),
-    ));
-
-    if query.is_empty() {
-        html.push_str(r#"<div style="color:var(--muted);padding:24px 0;text-align:center;line-height:2;">
-<p>Search for anything across all burrows.</p>
-<p style="font-size:12px;">Operators: <code>author:~name</code> · <code>type:phlog</code> · <code>type:page</code> · <code>fresh:30</code> (days)</p>
-</div>"#);
-    } else if results.is_empty() {
-        html.push_str(&format!(
-            r#"<p style="color:var(--muted);padding:24px 0;text-align:center;">No results for "{}"</p>"#,
-            html_escape(query)
-        ));
-    } else {
-        html.push_str(&format!(
-            r#"<div class="section-label">{} results</div>"#,
-            results.len()
-        ));
-        for r in results {
-            html.push_str(&format!(
-                r#"<div class="search-result">
-<a class="sr-title" href="{path}">{title}</a>
-<div class="sr-meta"><span class="sr-tag">{doc_type}</span>{author}{date}</div>
-<div class="sr-snippet">{snippet}</div>
-</div>"#,
-                path = html_escape(&r.path),
-                title = html_escape(if r.title.is_empty() { &r.path } else { &r.title }),
-                doc_type = html_escape(&r.doc_type),
-                author = html_escape(&r.author),
-                date = if r.date.is_empty() { String::new() } else { format!(" · {}", html_escape(&r.date)) },
-                snippet = html_escape(&r.snippet),
-            ));
-        }
-    }
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn rings_list_page(rings: &[Ring], burrows: &[BurrowEntry], domain: &str) -> String {
-    let mut html = head("Rings", "/rings", domain);
-    html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs"><a href="/">{}</a> / rings</div>
-<h1>Rings</h1>
-<div class="subtitle">Curated webrings — {} rings on this server</div>"#,
-        sidebar("/rings", burrows),
-        html_escape(domain),
-        rings.len(),
-    ));
-
-    if rings.is_empty() {
-        html.push_str(r#"<p style="color:var(--muted);padding:32px 0;text-align:center;">No rings yet. Create one with <code>burrow ring create "Ring Name"</code></p>"#);
-    } else {
-        for ring in rings {
-            html.push_str(&format!(
-                r#"<div style="padding:16px 12px;border-bottom:1px solid var(--faint);">
-<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-  <span style="color:var(--accent);">◎</span>
-  <span style="font-size:14px;font-weight:500;">{title}</span>
-  <span style="font-size:12px;color:var(--muted);">by {owner}</span>
-</div>
-<div style="font-size:13px;color:var(--muted);margin-bottom:8px;">{desc}</div>
-<div style="display:flex;flex-wrap:wrap;gap:6px;">"#,
-                title = html_escape(&ring.title),
-                owner = html_escape(&ring.owner),
-                desc = html_escape(&ring.description),
-            ));
-            for member in &ring.members {
-                let href = ring_member_href(member);
-                let display = member.trim_start_matches('/');
-                let is_external = member.starts_with("gph://");
-                let icon = if is_external { "→" } else { "/" };
-                html.push_str(&format!(
-                    r#"<a href="{href}" style="font-size:12px;padding:2px 8px;background:var(--faint);border-radius:4px;color:var(--accent);text-decoration:none;">{icon}{display}</a>"#,
-                    href = html_escape(&href),
-                    icon = icon,
-                    display = html_escape(display),
-                ));
-            }
-            html.push_str("</div></div>");
-        }
-    }
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn gallery_page(path: &str, pieces: &[GalleryPiece], burrows: &[BurrowEntry], domain: &str, accent: Option<&str>) -> String {
-    let crumbs = build_crumbs(path, domain);
-    let burrow_name = path.split('/').next().unwrap_or(path);
-
-    let mut html = head_with_accent("Gallery", &format!("/{}", path), domain, accent);
-
-    // Gallery-specific CSS
-    html.push_str(r#"<style>
-.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:8px 0}
-.gallery-card{background:var(--faint);border-radius:8px;overflow:hidden;transition:transform 0.15s,box-shadow 0.15s;text-decoration:none;color:var(--text)}
-.gallery-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.15);text-decoration:none}
-.gallery-preview{padding:12px;overflow:hidden;height:180px;position:relative}
-.gallery-preview pre{font-family:'JetBrains Mono',monospace;font-size:7px;line-height:1.2;color:var(--accent);margin:0;white-space:pre;overflow:hidden}
-.gallery-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,var(--faint))}
-.gallery-info{padding:10px 12px;border-top:1px solid var(--surface);display:flex;justify-content:space-between;align-items:center}
-.gallery-title{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500}
-.gallery-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
-</style>"#);
-
-    html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs">{}</div>
-<h1>Gallery</h1>
-<div class="subtitle">{}'s ASCII art collection — {} pieces</div>"#,
-        sidebar(&format!("/{}", burrow_name), burrows),
-        crumbs,
-        html_escape(burrow_name),
-        pieces.len(),
-    ));
-
-    if pieces.is_empty() {
-        html.push_str(r#"<p style="color:var(--muted);padding:32px 0;text-align:center;">No art yet. Add <code>.txt</code> files to your <code>gallery/</code> directory.</p>"#);
-    } else {
-        html.push_str(r#"<div class="gallery-grid">"#);
-        for piece in pieces {
-            html.push_str(&format!(
-                r#"<a class="gallery-card" href="/{path}/{slug}">
-<div class="gallery-preview"><pre>{preview}</pre></div>
-<div class="gallery-info">
-  <span class="gallery-title">{title}</span>
-  <span class="gallery-meta">{lines}L · {width}W</span>
-</div>
-</a>"#,
-                path = html_escape(path),
-                slug = html_escape(&piece.url_path),
-                preview = html_escape(&piece.preview),
-                title = html_escape(&piece.title),
-                lines = piece.line_count,
-                width = piece.max_width,
-            ));
-        }
-        html.push_str("</div>");
-    }
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn art_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
-    let crumbs = build_crumbs(path, domain);
-    let title = content.lines().next().unwrap_or("")
-        .trim_start_matches("# ");
-    let line_count = content.lines().count();
-    let max_width = content.lines().map(|l| l.len()).max().unwrap_or(0);
-
-    // Strip the title line if it's a heading
-    let art_content = if content.starts_with("# ") {
-        content.lines().skip(1).collect::<Vec<_>>().join("\n")
-    } else {
-        content.to_string()
-    };
-
-    // Calculate font size: scale down for wider pieces
-    let font_size = if max_width > 120 { 6 } else if max_width > 80 { 8 } else if max_width > 60 { 10 } else { 12 };
-
-    let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
-
-    html.push_str(&format!(r#"<style>
-.art-frame{{max-width:900px;margin:0 auto;padding:0 24px}}
-.art-canvas{{background:var(--faint);border-radius:8px;padding:24px;overflow-x:auto;margin:24px 0}}
-.art-canvas pre{{font-family:'JetBrains Mono',monospace;font-size:{font_size}px;line-height:1.3;color:var(--accent);margin:0;white-space:pre}}
-.art-meta{{display:flex;justify-content:space-between;align-items:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:24px}}
-</style>"#));
-
-    html.push_str(&format!(r#"<div class="art-frame">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
-<h1 style="margin-top:16px;">{title}</h1>
-<div class="art-meta">
-  <span>{lines} lines · {width} cols</span>
-  <span>{filename}</span>
-</div>
-<div class="art-canvas"><pre>{art}</pre></div>
-</div>"#,
-        crumbs = crumbs,
-        title = html_escape(title),
-        lines = line_count,
-        width = max_width,
-        filename = html_escape(filename),
-        art = html_escape(&art_content),
-    ));
-
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn bookmarks_page(path: &str, bookmarks: &[BookmarkEntry], domain: &str, accent: Option<&str>) -> String {
-    let crumbs = build_crumbs(path, domain);
-    let burrow_name = path.split('/').next().unwrap_or(path);
-
-    let mut html = head_with_accent("Bookmarks", &format!("/{}", path), domain, accent);
-    html.push_str(&format!(r#"<div style="max-width:680px;margin:0 auto;padding:0 24px;">
-<div class="crumbs" style="margin-top:24px;">{crumbs}</div>
-<div class="reading">
-<h1>Bookmarks</h1>
-<div class="meta">{}'s bookmarks · {}</div>
-"#,
-        html_escape(burrow_name),
-        if bookmarks.len() == 1 { "1 link".to_string() } else { format!("{} links", bookmarks.len()) },
-    ));
-
-    if bookmarks.is_empty() {
-        html.push_str(r#"<p style="color:var(--muted);text-align:center;padding:32px 0;">No bookmarks yet.</p>"#);
-    } else {
-        for entry in bookmarks {
-            let icon = if entry.is_external { "→" } else { "/" };
-            html.push_str(&format!(
-                r#"<div style="border-bottom:1px solid var(--faint);padding:12px 0;">
-<div style="display:flex;align-items:center;gap:8px;">
-  <span style="color:var(--accent);font-size:14px;width:16px;text-align:center;">{icon}</span>
-  <a href="{url}" style="font-size:14px;font-weight:500;">{url_display}</a>
-</div>
-{desc_html}
-</div>"#,
-                icon = html_escape(icon),
-                url = html_escape_attr(&entry.url),
-                url_display = html_escape(&entry.url),
-                desc_html = if entry.description.is_empty() {
-                    String::new()
-                } else {
-                    format!(r#"<div style="padding-left:24px;font-size:13px;color:var(--muted);margin-top:4px;">{}</div>"#,
-                        html_escape(&entry.description))
-                },
             ));
         }
     }
@@ -664,254 +334,6 @@ pub fn render_gph(content: &str) -> String {
         html.push_str("</pre>");
     }
     html
-}
-
-pub fn firehose_page(posts: &[(String, String, String, String)], burrows: &[BurrowEntry], domain: &str, prev_page: Option<usize>, next_page: Option<usize>) -> String {
-    // posts: Vec<(date, title, burrow_name, url_path)>
-    let mut html = head("Firehose", "/firehose", domain);
-    html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs"><a href="/">{}</a> / firehose</div>
-<h1>Firehose</h1>
-<div class="subtitle">All recent posts across all burrows</div>"#,
-        sidebar("/firehose", burrows),
-        html_escape(domain),
-    ));
-
-    if posts.is_empty() {
-        html.push_str(r#"<p style="color:var(--muted);padding:32px 0;">No posts yet.</p>"#);
-    } else {
-        html.push_str(r#"<div class="section-label">Recent posts</div>"#);
-        for (date, title, burrow, url_path) in posts {
-            html.push_str(&format!(
-                r#"<a class="entry" href="{path}"><span class="entry-type txt">¶</span><span class="entry-name">{title}</span><span class="entry-desc">{burrow}</span><span class="entry-meta">{date}</span></a>"#,
-                path = html_escape(url_path),
-                title = html_escape(title),
-                burrow = html_escape(burrow),
-                date = html_escape(date),
-            ));
-        }
-    }
-
-    // Pagination links
-    if prev_page.is_some() || next_page.is_some() {
-        html.push_str(r#"<div style="display:flex;justify-content:space-between;padding:20px 12px;font-size:13px;">"#);
-        if let Some(p) = prev_page {
-            html.push_str(&format!(r#"<a href="/firehose?page={}">← Newer</a>"#, p));
-        } else {
-            html.push_str("<span></span>");
-        }
-        if let Some(p) = next_page {
-            html.push_str(&format!(r#"<a href="/firehose?page={}">Older →</a>"#, p));
-        } else {
-            html.push_str("<span></span>");
-        }
-        html.push_str("</div>");
-    }
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-pub fn discover_page(burrows: &[BurrowEntry], latest_posts: &[(String, String, String, String)], popular: &[(String, String, usize)], rings: &[Ring], random_pick: Option<&BurrowEntry>, domain: &str) -> String {
-    let mut html = head("Discover", "/discover", domain);
-    html.push_str(&format!(r#"<div class="container">{}<div class="main">
-<div class="crumbs"><a href="/">{}</a> / discover</div>
-<h1>Discover</h1>
-<div class="subtitle">Explore the burrow network — {} burrows and counting</div>"#,
-        sidebar("/discover", burrows),
-        html_escape(domain),
-        burrows.len(),
-    ));
-
-    // Most bookmarked
-    if !popular.is_empty() {
-        html.push_str(r#"<div class="section-label">Most bookmarked</div>"#);
-        for (url, desc, count) in popular {
-            let bookmark_label = if *count == 1 { "1 bookmark".to_string() } else { format!("{} bookmarks", count) };
-            let display_desc = if desc.is_empty() { url.clone() } else { desc.clone() };
-            html.push_str(&format!(
-                r#"<a class="entry" href="{path}"><span class="entry-type" style="color:var(--accent);">★</span><span class="entry-name">{desc}</span><span class="entry-desc">{url}</span><span class="entry-meta">{meta}</span></a>"#,
-                path = html_escape(url),
-                desc = html_escape(&display_desc),
-                url = html_escape(url),
-                meta = html_escape(&bookmark_label),
-            ));
-        }
-    }
-
-    // Random burrow spotlight
-    if let Some(pick) = random_pick {
-        html.push_str(&format!(
-            r#"<div class="section-label">Random burrow</div>
-<a class="entry" href="{path}"><span class="entry-type">/</span><span class="entry-name">{name}</span><span class="entry-desc">{desc}</span><span class="entry-meta"><a href="/random">↻</a></span></a>"#,
-            path = html_escape(&pick.path),
-            name = html_escape(&pick.name),
-            desc = html_escape(&pick.description),
-        ));
-    }
-
-    // Latest posts
-    if !latest_posts.is_empty() {
-        html.push_str(r#"<div class="section-label">Latest posts</div>"#);
-        for (date, title, burrow, url_path) in latest_posts {
-            html.push_str(&format!(
-                r#"<a class="entry" href="{path}"><span class="entry-type txt">¶</span><span class="entry-name">{title}</span><span class="entry-desc">{burrow}</span><span class="entry-meta">{date}</span></a>"#,
-                path = html_escape(url_path),
-                title = html_escape(title),
-                burrow = html_escape(burrow),
-                date = html_escape(date),
-            ));
-        }
-    }
-
-    // Rings
-    if !rings.is_empty() {
-        html.push_str(r#"<div class="section-label">Rings</div>"#);
-        for ring in rings {
-            html.push_str(&format!(
-                r#"<a class="entry" href="/rings"><span class="entry-type" style="color:var(--accent);">◎</span><span class="entry-name">{title}</span><span class="entry-desc">{desc}</span><span class="entry-meta">{count} members</span></a>"#,
-                title = html_escape(&ring.title),
-                desc = html_escape(&ring.owner),
-                count = ring.members.len(),
-            ));
-        }
-    }
-
-    // All burrows
-    html.push_str(r#"<div class="section-label">All burrows</div>"#);
-    for burrow in burrows {
-        html.push_str(&format!(
-            r#"<a class="entry" href="{path}"><span class="entry-type">/</span><span class="entry-name">{name}</span><span class="entry-desc">{desc}</span><span class="entry-meta">{meta}</span></a>"#,
-            path = html_escape(&burrow.path),
-            name = html_escape(&burrow.name),
-            desc = html_escape(&burrow.description),
-            meta = html_escape(&burrow.meta),
-        ));
-    }
-
-    html.push_str(r#"<div style="text-align:center;padding:24px 0;font-size:13px;color:var(--muted);">
-<a href="/firehose">View all posts →</a> · <a href="/random">Random burrow →</a>
-</div>"#);
-
-    html.push_str("</div></div>");
-    html.push_str(&footer(domain));
-    html
-}
-
-// ── Gemtext rendering ───────────────────────────────────────────
-
-pub fn render_gph_to_gmi(content: &str) -> String {
-    let mut gmi = String::new();
-    let mut in_code = false;
-
-    for line in content.lines() {
-        if !in_code && line.starts_with("  ") {
-            gmi.push_str("```\n");
-            gmi.push_str(line.trim_start());
-            gmi.push('\n');
-            in_code = true;
-            continue;
-        }
-        if in_code {
-            if line.starts_with("  ") || line.is_empty() {
-                gmi.push_str(if line.is_empty() { "" } else { line.trim_start() });
-                gmi.push('\n');
-                continue;
-            } else {
-                gmi.push_str("```\n");
-                in_code = false;
-            }
-        }
-
-        if line.starts_with("# ") {
-            // Headings pass through
-            gmi.push_str(line);
-            gmi.push('\n');
-        } else if line.starts_with("> ") {
-            // Quotes pass through
-            gmi.push_str(line);
-            gmi.push('\n');
-        } else if line == "---" {
-            // Horizontal rule → blank line
-            gmi.push('\n');
-        } else if let Some(rest) = line.strip_prefix("→ ") {
-            // External link → Gemini link
-            let url = rest.trim();
-            gmi.push_str(&format!("=> {}\n", url));
-        } else if line.starts_with("/~") {
-            // Internal link: /~user/path   Description
-            let parts: Vec<&str> = line.splitn(2, "   ").collect();
-            let link = parts[0].trim();
-            let desc = parts.get(1).unwrap_or(&"");
-            if desc.is_empty() {
-                gmi.push_str(&format!("=> {}\n", link));
-            } else {
-                gmi.push_str(&format!("=> {} {}\n", link, desc));
-            }
-        } else if line.is_empty() {
-            gmi.push('\n');
-        } else {
-            gmi.push_str(line);
-            gmi.push('\n');
-        }
-    }
-    if in_code {
-        gmi.push_str("```\n");
-    }
-    gmi
-}
-
-pub fn home_gmi(burrows: &[BurrowEntry], domain: &str) -> String {
-    let mut gmi = String::new();
-    gmi.push_str(&format!("# {}\n\n", domain));
-    gmi.push_str(&format!("Community burrow server — {} burrows\n\n", burrows.len()));
-    for b in burrows {
-        let name = b.name.trim_end_matches('/');
-        if b.description.is_empty() {
-            gmi.push_str(&format!("=> {} {}\n", b.path, name));
-        } else {
-            gmi.push_str(&format!("=> {} {} — {}\n", b.path, name, b.description));
-        }
-    }
-    gmi.push_str("\n=> /discover Discover\n");
-    gmi.push_str("=> /firehose Firehose\n");
-    gmi
-}
-
-pub fn directory_listing_gmi(path: &str, entries: &[BurrowEntry]) -> String {
-    let mut gmi = String::new();
-    gmi.push_str(&format!("# {}/\n\n", path));
-
-    let dirs: Vec<_> = entries.iter().filter(|e| e.entry_type == EntryType::Directory).collect();
-    let files: Vec<_> = entries.iter().filter(|e| e.entry_type != EntryType::Directory).collect();
-
-    if !dirs.is_empty() {
-        gmi.push_str("## Directories\n\n");
-        for e in &dirs {
-            if e.description.is_empty() {
-                gmi.push_str(&format!("=> {} {}\n", e.path, e.name));
-            } else {
-                gmi.push_str(&format!("=> {} {} — {}\n", e.path, e.name, e.description));
-            }
-        }
-        gmi.push('\n');
-    }
-    if !files.is_empty() {
-        gmi.push_str("## Files\n\n");
-        for e in &files {
-            if e.description.is_empty() {
-                gmi.push_str(&format!("=> {} {} ({})\n", e.path, e.name, e.meta));
-            } else {
-                gmi.push_str(&format!("=> {} {} — {} ({})\n", e.path, e.name, e.description, e.meta));
-            }
-        }
-    }
-    gmi
-}
-
-pub fn not_found_gmi(path: &str) -> String {
-    format!("# Not Found\n\nThis hole leads nowhere: {}\n\n=> / ← Back to the surface\n", path)
 }
 
 fn html_escape(s: &str) -> String {

@@ -1,0 +1,67 @@
+# Caching & Security
+
+burrowd is fast because plaintext is fast. But we added a few things to make it fast on purpose, not just by accident.
+
+---
+
+## ETag caching — 304 Not Modified
+
+Every response includes an ETag header — a hash of the file's contents and last-modified time. When a browser revisits a page, it sends If-None-Match with the previous ETag. If the file hasn't changed, the server responds with 304 Not Modified and zero bytes.
+
+No body. No rendering. No disk read. The browser shows what it already has.
+
+This matters less for a 3 KB plaintext page than for a 2 MB JPEG, but it matters. Multiply "less" by a thousand requests and you get "noticeably less." ETags are the kind of optimization that makes sysadmins feel warm inside and makes exactly zero difference to the person reading your phlog. Which is, of course, the best kind.
+
+---
+
+## Content-Security-Policy — enforced by the browser
+
+Every response includes this header:
+
+  Content-Security-Policy: default-src 'self'; script-src 'none'
+
+Translation: the browser will refuse to execute any JavaScript on any Burrow page. Not because the server doesn't serve JavaScript — it doesn't — but because even if someone managed to inject a script tag through a guestbook entry or a malicious filename, the browser itself would block it.
+
+Belt and suspenders. The belt is "we don't serve JS." The suspenders are "the browser won't run it even if we did." We wear both because we've seen what happens when you trust only one layer.
+
+---
+
+## Compression — gzip and brotli
+
+Add one line to burrow.conf:
+
+  compression = true
+
+Every text response gets compressed before it leaves the server. The Accept-Encoding header from the browser determines the algorithm — brotli if supported, gzip otherwise.
+
+A typical phlog post compresses from 3 KB to about 900 bytes. That's smaller than the TCP handshake that delivered it. For most pages, the HTTP headers are longer than the compressed body. This is plaintext compression working exactly as designed: repetitive ASCII squishes beautifully.
+
+Disabled by default because not everyone needs it. A server with ten readers doesn't need compression. A server with ten thousand might appreciate the bandwidth savings. You know which one you are.
+
+---
+
+## SIGHUP — hot-reload without downtime
+
+  kill -HUP $(pidof burrowd)
+
+The server re-reads burrow.conf and rebuilds the search index without dropping connections. No restart. No downtime. No "please wait while we redeploy."
+
+What gets reloaded:
+
+- burrow.conf settings (port changes require a full restart)
+- Search index (new files, deleted files, updated content)
+- Ring memberships and directory listings
+
+What doesn't:
+
+- TLS certificates (restart required — certificate pinning is serious)
+- The port binding (you can't rebind a socket without closing it)
+
+One signal. One second. Zero dropped requests. The Unix way.
+
+---
+
+Four features. All of them work by doing less, not more. That's the theme around here.
+
+/~burrow/server/22-conventions   ← Filesystem Conventions
+/~burrow/server/24-social-features   Next: Social Features →

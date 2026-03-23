@@ -1,0 +1,65 @@
+# Filesystem Conventions
+
+Burrow doesn't have a settings panel, a metadata editor, or a YAML frontmatter parser. It has filenames. And filenames, it turns out, are enough.
+
+---
+
+## Inspired by — the one-line hat tip
+
+Start any text file with a path to another burrow page as the very first line:
+
+  /~maya/phlog/on-digital-gardens
+
+The server renders this as a subtle header above your text:
+
+  Inspired by ~maya
+
+It links back to the original. It's a citation, a nod, a "you made me think." No @ mention. No notification. No engagement metric. Just one writer acknowledging another through the filesystem.
+
+If the path doesn't exist, the text still renders. Dead links happen. People move. The acknowledgment remains.
+
+---
+
+## Guest authors — the filename is the byline
+
+Name a file with the guest- prefix and a tilde-name:
+
+  phlog/guest-~kai-on-walking.txt
+
+The server renders:
+
+  Guest post by ~kai
+
+The tilde-name between guest- and the title becomes the author attribution. The rest of the filename is the title, as usual. No co-author metadata. No "posted on behalf of." The filename is the entire permission system.
+
+This is for when someone writes a post for your burrow — a friend, a collaborator, a stranger you met on a webring who had something good to say. Their name goes in the filename. Their words go in the file. Democracy through mv.
+
+---
+
+## will.txt — your digital testament
+
+When you run burrow init, the CLI generates a will.txt in your burrow root:
+
+  # Digital Testament
+
+  This burrow belongs to ~yourname.
+
+  If I stop updating, it means one of three things:
+  1. I got busy with life
+  2. I moved to a new server
+  3. I am no longer here
+
+  In any case, leave my words alone. They said what I meant.
+
+  Contact: (your email here)
+
+It's a draft. Edit it. Or don't. But it's there, because a burrow is a place you build over years, and the internet has a habit of outliving its inhabitants. The file is just text. It has no legal force. But it has intent, and intent — on a filesystem where everything is explicit — is worth something.
+
+The server renders will.txt with a slightly muted style, like old paper. Because that's what it is.
+
+---
+
+Three conventions. No configuration. The filesystem is the API.
+
+/~burrow/server/21-writing-extras   ← Writing Extras
+/~burrow/server/23-caching-security   Next: Caching & Security →

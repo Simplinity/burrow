@@ -2,7 +2,7 @@
 
 ```
          ___
-        /   \      burrowd v0.1.0
+        /   \      burrowd v0.9.1
        | o o |     "The internet, minus the parts
         \ _ /      that made you hate the internet."
         /| |\
@@ -77,6 +77,10 @@ When someone visits `http://yourserver:7070/~alice/phlog/2026-03-20-hello-world`
 | `/stats` | Returns `{"burrows":N,"files":N,"uptime_secs":N}` — server vitals |
 | `/robots.txt` | Allows all crawlers. We have nothing to hide. |
 | `/favicon.ico` | Transparent 1x1 icon. Stops browsers from 404-ing on every page load. |
+| `/servers` | Server directory: curated list of known Burrow servers |
+| `/~alice/stats` | Anonymous reader count (page loads this month) |
+| `/~alice/subscriptions.opml` | OPML export of bookmarks for feed readers |
+| `/.well-known/*` | RFC 8615 well-known URIs (security.txt, humans.txt, etc.) |
 | `POST /ping` | Federation ping receiver (see FEDERATION below) |
 | `/nonexistent` | A 404 page with existential undertones |
 
@@ -117,6 +121,14 @@ The file stays readable in any editor — you just see @today.
 
 Write `@today` anywhere in a `.gph` or `.txt` file and the server renders it as the current date. Handy for "last updated" lines without manual editing. One magic word, no template engine.
 
+### "Inspired by" Link Convention
+
+Start a post with `← /~maya/phlog/original-post` as the first line and the server renders it as "Inspired by ~maya" with a link. A lightweight citation system — convention, not feature. The server renders the link differently based on position. The writer chooses to credit.
+
+### Guest Author Convention
+
+Name a file `guest-~maya-title.txt` and the server renders it with "Guest post by ~maya" and a link to their burrow. Collaboration without accounts, permissions, or CMS complexity. The filename is the instruction.
+
 ### Series Navigation
 
 Name files with a numbered pattern — `part-01.txt`, `part-02.txt`, `chapter_3.txt` — and the server detects the series automatically. Each page shows "Part X of Y" in the meta line and a navigation bar at the bottom:
@@ -144,6 +156,34 @@ Files starting with `.` are hidden from directory listings. The `.burrow` config
 
 Files and directories starting with `_` are **drafts**: hidden from listings *and* inaccessible via HTTP. Visiting `/~alice/_secret-manifesto` returns a 404, even if the file exists. Rename it to `secret-manifesto.txt` when you're ready to face the world. We won't judge. Much.
 
+### Burrow Anniversary
+
+The server detects the date of your earliest post and shows a subtle "Est. YYYY" badge next to your burrow name in directory listings. No confetti, no fanfare — just a quiet acknowledgment of duration. Celebrates persistence, not popularity.
+
+### Neighbors List
+
+If your burrow shares a ring with other burrows, they appear as "Neighbors" on your burrow root page. Not followers — just people in the same circles. Derived from existing ring data. No social graph. No follow button.
+
+### Anonymous Reader Count
+
+`/~user/stats` shows one number: how many pages were loaded this month. No per-post breakdown. No daily graph. No visitor data. Just: "347 page loads in March 2026." An `AtomicU64` per burrow, reset on the first of the month, persisted to `burrows/.stats` to survive restarts. The minimum viable metric.
+
+### Canonical URL
+
+The server sends a `<link rel="canonical" href="gph://...">` tag in the HTML `<head>` of every page. Search engines know the Burrow version is the source. One tag. Zero config. Invisible to humans. Useful to machines.
+
+### Last-Modified Date
+
+The server shows the file modification date in the meta line of every text page. Readers know how old a text is. The filesystem already knows — the server just shows it.
+
+### `.well-known/` Support
+
+Files in `burrows/.well-known/` are served at `/.well-known/*` per RFC 8615. Standard internet conventions: `security.txt`, `humans.txt`, `webfinger`. The server serves files from a directory. That's what it does.
+
+### OPML Export
+
+Every burrow with a `bookmarks.gph` automatically gets an OPML export at `/~user/subscriptions.opml`. Import your bookmarks into any RSS reader. Standard format. Read-only export. Your data, your reader.
+
 ## CONFIGURATION
 
 Configuration lives in `burrow.conf` in the working directory. Generate one with:
@@ -166,7 +206,7 @@ tls_key = /etc/letsencrypt/live/myhole.example.com/privkey.pem
 gemini_port = 1965
 ```
 
-We started with two keys. Then reality happened. We're not proud of six, but we're not adding a seventh. (Narrator: they will.)
+We started with two keys. Then reality happened. We're not proud of seven, but we're not adding an eighth. (Narrator: they will.)
 
 ### Configuration Reference
 
@@ -178,6 +218,7 @@ We started with two keys. Then reality happened. We're not proud of six, but we'
 | `tls_cert` | *(none)* | Path to a PEM certificate chain. If both `tls_cert` and `tls_key` are set, burrowd serves HTTPS. No Caddy. No nginx. Just burrowd and a certificate. |
 | `tls_key` | *(none)* | Path to the private key. Keep this file readable only by the burrowd user, or you'll have bigger problems than typography. |
 | `gemini_port` | *(none)* | Port for the Gemini protocol listener (typically `1965`). Requires TLS to be configured. Your `.gph` files are automatically converted to Gemtext. Because one protocol is never enough. |
+| `compression` | `false` | Enable gzip and Brotli compression. Text compresses spectacularly — a 64 KB `.txt` becomes ~8 KB over the wire. Automatic if the client accepts it. Set to `true` and forget about it. |
 
 If `burrow.conf` doesn't exist, burrowd defaults to `localhost:7070`, which is fine for local development and existential crises.
 
@@ -224,7 +265,7 @@ burrowd
 
 # What you'll see:
 #
-#   / burrow v0.1.0
+#   / burrow v0.9.1
 #
 #   Tunneling...
 #
@@ -250,6 +291,9 @@ We take security seriously, even if we don't take much else seriously:
 - **Draft enforcement**: Files and directories starting with `_` or `.` return 404 on HTTP. The filesystem knows they exist, but the server pretends they don't. Method acting, but for web servers.
 - **Guestbook rate limiting**: One guestbook post per 30 seconds per IP address. Spammers will need to be very, very patient.
 - **Federation ping cap**: Maximum 100 stored pings per server. We remember who mentioned you, but we don't remember *everyone* who mentioned you. Storage has limits. Memory doesn't have to.
+- **Content-Security-Policy**: Strict CSP header on all responses — no inline scripts, no external resources, no iframes. The browser refuses everything except what the server itself serves. XSS becomes architecturally impossible, not just escaped.
+- **ETag caching**: The server sends ETags based on file modification time. Browsers cache automatically. Conditional GET returns 304 Not Modified when content hasn't changed. Less bandwidth, faster loads, zero configuration.
+- **SIGHUP hot-reload**: Send `SIGHUP` to burrowd and it reloads `burrow.conf` and all `.burrow` files without restart. No downtime for config changes. Unix convention.
 - **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person. (The guestbook form and `/ping` endpoint are the exceptions — one appends text, the other stores a JSON reference. We had meetings about both.)
 
 ## GUESTBOOK
@@ -470,7 +514,8 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 | JavaScript | 0 | CSS handles the progress bar. We are proud. Very proud. |
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
-| Config options | 6 (server) + 5 (burrow) | We started with 2. Reality happened. |
+| Config options | 7 (server) + 5 (burrow) | We started with 2. Reality happened. |
+| Tests | 42 | Covering render, escaping, XSS, series, dates, compression, ETags |
 | POST endpoints | 2 (guestbook + ping) | We agonized over the first. The second was easier. |
 | Protocols | 3 (HTTP, HTTPS, Gemini) | One protocol is never enough. Three might be too many. We don't care. |
 
@@ -618,10 +663,14 @@ burrow guestbook show                         Display entries in terminal
 
 ```
 burrow export [output.tar.gz]     Backup your burrow as tar.gz
+burrow export-static [output/]    Generate complete static HTML site
 burrow push <remote>              Push to remote server via rsync/SSH
 burrow pull <remote>              Pull from remote server via rsync/SSH
 burrow timecapsule [year]         Generate yearly stats summary
 burrow colophon                   Generate colophon.txt (stats, rings, metadata)
+burrow changelog                  Generate changelog.txt from file mtimes
+burrow lint                       Validate .gph files for common errors
+burrow import <file.md>           Convert Markdown to .gph format
 ```
 
 ### Reading List (Private)

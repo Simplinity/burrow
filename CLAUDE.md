@@ -25,7 +25,7 @@ src/
   lib.rs       Shared library — re-exports config module
   config.rs    Server configuration (burrow.conf parsing/writing)
   render.rs    HTML rendering — all pages, gph markup, CSS
-  tests.rs     Unit tests (36) — render, escaping, XSS, file helpers
+  tests.rs     Unit tests (42) — render, escaping, XSS, file helpers, series, ETags
 
 burrows/       Content root — each ~user/ is a burrow
   ~bruno/      Sample burrow
@@ -36,8 +36,8 @@ Docs/          Project documentation
 
 ## Binaries
 
-- **`burrowd`** — HTTP server. Reads `burrow.conf`, serves `burrows/` directory on configured port.
-- **`burrow`** — CLI tool. Create burrows, write posts, manage guestbooks, configure server.
+- **`burrowd`** — HTTP/HTTPS/Gemini server. Reads `burrow.conf`, serves `burrows/` directory. Supports ETag caching, CSP headers, optional gzip/Brotli compression, and SIGHUP hot-reload.
+- **`burrow`** — CLI tool. Create burrows, write posts, manage guestbooks, lint/import content, export static sites, configure server.
 
 ## Key conventions
 
@@ -48,14 +48,21 @@ Docs/          Project documentation
 - `.gph` files use custom markup format (headings, quotes, code, links)
 - `guestbook.gph` is a special file: server renders it with a form + POST handler
 - `/~user/feed.xml` is a virtual route — RSS feed generated from `phlog/` directory
+- Optional gzip/Brotli compression via `compression = true` in `burrow.conf`
+- SIGHUP hot-reload for config changes without restart
+- ETag-based conditional GET for caching (304 Not Modified)
+- `.well-known/` support (RFC 8615) for standard internet conventions
 
 ## Security model
 
 - Path traversal protection: `fs::canonicalize()` + `starts_with()` on all file access
 - Two-level HTML escaping: `html_escape()` for text, `html_escape_attr()` for href attributes
 - XML escaping for RSS output
+- Content-Security-Policy header on all responses (no inline scripts, no external resources)
+- ETag caching with conditional GET (304 Not Modified)
 - Guestbook input: truncation limits, `---` format injection prevention, 200 entry cap
-- 1 MB max file size for served content
+- 64 KB max file size for text, 2 MB for binary content
+- Draft enforcement: `_` and `.` prefixed paths return 404
 
 ## Documentation
 

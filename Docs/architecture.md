@@ -1,6 +1,6 @@
 # Architecture
 
-> Burrow v0.2.0 — Last updated 2026-03-23
+> Burrow v0.9.1 — Last updated 2026-03-23
 
 This document describes the architecture of Burrow: how the pieces fit together,
 what each file does, why certain decisions were made, and where the boundaries are.
@@ -76,12 +76,17 @@ main()
   │     ├── GET  /search                  → search_handler()
   │     ├── GET  /search/index.json       → search_index_json()
   │     ├── GET  /rings                   → rings_page()
+  │     ├── GET  /servers                  → server_directory()
+  │     ├── GET  /.well-known/{*path}     → well_known()
   │     ├── POST /ping                    → receive_ping()
   │     ├── GET  /{*path}                 → serve_burrow()
   │     └── POST /{*path}                 → post_guestbook()
   ├── spawn(gemini_listener)              ← if TLS + gemini_port configured
   ├── spawn(send_outgoing_pings)          ← scans posts for gph:// links
+  ├── spawn(signal_handler(SIGHUP))       ← hot-reload config on SIGHUP
   ├── TraceLayer (tower-http)             ← access logging
+  ├── CompressionLayer (if config.compression) ← gzip/brotli
+  ├── CSP header middleware               ← Content-Security-Policy on all responses
   └── TcpListener::bind("0.0.0.0:PORT") + axum::serve()
 ```
 
@@ -103,6 +108,8 @@ serve_burrow()
   ├── Is guestbook.gph? → parse_guestbook() + guestbook_page()
   ├── Is bookmarks.gph? → parse_bookmarks() + bookmarks_page()
   ├── Is gallery item? → art_page() (monospace viewer)
+  ├── Check ETag (If-None-Match) → 304 Not Modified if unchanged
+  ├── Increment page_counts[burrow] (AtomicU64)
   ├── Is binary? → serve with MIME type + Cache-Control
   └── Otherwise → load mentions + rings → text_page_with_mentions()
 ```
@@ -111,11 +118,12 @@ serve_burrow()
 
 ```rust
 struct AppState {
-    config: Arc<ServerConfig>,          // domain, aliases, TLS paths, gemini port
+    config: Arc<ServerConfig>,          // domain, aliases, TLS paths, gemini port, compression
     domain: Arc<String>,                // primary domain (convenience)
     guestbook_limiter: Arc<Mutex<HashMap<IpAddr, Instant>>>,  // rate limiting
     started_at: Instant,                // for /stats uptime
     search_index: Arc<SearchIndex>,     // BM25 inverted index
+    page_counts: Arc<HashMap<String, AtomicU64>>,  // per-burrow page load counter
 }
 ```
 
@@ -152,9 +160,13 @@ burrow
   │     ├── init                     Create guestbook.gph
   │     └── show                     Display entries
   ├── export [output.tar.gz]         Backup active burrow
+  ├── export-static [output/]        Generate static HTML site
   ├── push <remote>                  rsync push to remote server
   ├── pull <remote>                  rsync pull from remote server
   ├── timecapsule [year]             Generate yearly stats summary
+  ├── changelog                      Generate changelog.txt from mtimes
+  ├── lint                           Validate .gph files
+  ├── import <file.md>               Convert Markdown to .gph
   ├── open <gph://url>               Open gph:// URL
   ├── register                       Register gph:// protocol handler
   └── server
@@ -182,6 +194,7 @@ pub struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub gemini_port: Option<u16>,
+    pub compression: bool,       // default: false
 }
 ```
 
@@ -194,6 +207,7 @@ aliases = burrow.bruno.be, myburrow.com
 tls_cert = /path/to/cert.pem
 tls_key = /path/to/key.pem
 gemini_port = 1965
+compression = true
 ```
 
 Parsed line-by-line with `strip_prefix()`. No TOML, no YAML, no serde for config.
@@ -297,6 +311,9 @@ and merge into their own index.
 | `bookmarks.gph` | Any `~user/` dir | Public bookmarks page |
 | `*.ring` | `~user/rings/` | Webring definition (title, description, members) |
 | `.pings` | `burrows/` | Federation ping storage (JSON, max 100) |
+| `.stats` | `burrows/` | Persisted page load counters (AtomicU64 per burrow) |
+| `will.txt` | Any `~user/` dir | Digital testament (generated on init) |
+| `servers.conf` | Project root | Curated server directory entries |
 
 ### Ring file format
 
@@ -331,6 +348,10 @@ Routes that don't map directly to files on disk:
 | `/random` | `random_burrow()` | 302 redirect to random burrow |
 | `/health` | `health()` | `{"status":"ok"}` JSON |
 | `/stats` | `stats()` | `{"burrows":N,"files":N,"uptime_secs":N}` JSON |
+| `/servers` | `server_directory()` | HTML server directory |
+| `/~user/stats` | `burrow_stats()` | Anonymous reader count |
+| `/~user/subscriptions.opml` | `opml_export()` | OPML bookmark export |
+| `/.well-known/*` | `well_known()` | RFC 8615 well-known URIs |
 | `POST /ping` | `receive_ping()` | Federation ping receiver |
 
 Feeds are generated per-request by scanning `phlog/` directories. Search uses
@@ -381,6 +402,11 @@ the pre-built in-memory index. Stats are computed on-demand.
 - Rate limiting: 1 post per 30 seconds per IP address
 - POST only accepted for files named exactly `guestbook.gph`
 
+**HTTP security:**
+- Content-Security-Policy header on all responses (no inline scripts, no external resources)
+- ETag caching with conditional GET (304 Not Modified)
+- SIGHUP hot-reload (config changes without restart)
+
 **Federation protection:**
 - Max 100 stored pings per server
 - Pings are stored as JSON, not executed
@@ -390,13 +416,13 @@ the pre-built in-memory index. Stats are computed on-demand.
 ## Dependency tree
 
 ```
-burrow v0.2.0
+burrow v0.9.1
 ├── axum 0.8              HTTP framework (server)
 ├── axum-server 0.7       TLS support via rustls (server)
 ├── tokio 1               Async runtime (server)
 ├── tokio-rustls           TLS for Gemini listener (server)
 ├── rustls-pemfile         PEM certificate parsing (server)
-├── tower-http 0.6        Access logging TraceLayer (server)
+├── tower-http 0.6        Access logging TraceLayer, compression (server)
 ├── tracing                Structured logging (server)
 ├── tracing-subscriber     Log output formatting (server)
 ├── clap 4                CLI argument parsing (CLI)

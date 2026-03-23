@@ -7,6 +7,50 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.9.1] — 2026-03-23
+
+The "everything you need, nothing you don't" release. 26 features. Zero JavaScript. 42 tests.
+
+### Added
+
+#### Server (`burrowd`)
+- **`@today` date stamps** — code-block aware inline date expansion (YYYY-MM-DD)
+- **Series navigation** — `part-01`, `part-02` pattern with "Part X of Y" and prev/next links
+- **Slow reading mode** — `?slow=1` URL parameter (21px, 580px, extra whitespace)
+- **Seasonal accent colors** — spring green, summer gold, autumn brown, winter blue
+- **"Inspired by" link convention** — `← /~user/path` as first line renders as citation
+- **Guest author convention** — `guest-~name-title.txt` renders with "Guest post by ~name"
+- **Burrow anniversary** — "Est. YYYY" badge from earliest post date
+- **Neighbors list** — ring-derived neighbors shown on burrow root pages
+- **Anonymous reader count** — `/~user/stats` shows monthly page loads (AtomicU64 per burrow)
+- **Canonical gph:// URL** — `<link rel="canonical" href="gph://...">` in HTML head
+- **Last-Modified date** — file modification date shown in meta line on text pages
+- **Server directory** (`/servers`) — curated list of known Burrow servers from `servers.conf`
+- **ETag caching** — conditional GET returns 304 Not Modified, based on file mtime
+- **Content-Security-Policy header** — strict CSP on all responses (no inline scripts, no external resources)
+- **Optional gzip/Brotli compression** — `compression = true` in `burrow.conf`
+- **SIGHUP hot-reload** — reload config without restart (Unix convention)
+- **`.well-known/` support** — RFC 8615 well-known URIs served from `burrows/.well-known/`
+- **OPML export** — `/~user/subscriptions.opml` from bookmarks
+- **Digital testament** — `will.txt` generated on `burrow init` (instructions for burrow end-of-life)
+- **Page load statistics** — persisted to `burrows/.stats`, survives restarts
+- **Zero JavaScript CSS progress bar** — `animation-timeline: scroll()`, no JS fallback
+
+#### CLI (`burrow`)
+- **`burrow colophon`** — generate publishable colophon.txt (stats, rings, metadata)
+- **`burrow lint`** — validate .gph files for common errors (broken links, line length, size)
+- **`burrow import`** — Markdown to .gph conversion (one-way migration)
+- **`burrow export-static`** — generate complete static HTML site for any host
+- **`burrow changelog`** — generate changelog.txt from file modification times
+- **`burrow read-later`** / **`burrow reading-list`** — private reading list (`_reading-list.gph`)
+- **Writing streaks** — consecutive publishing days shown in `burrow status` (private, local only)
+
+### Changed
+- Config options: 6 → 7 (server), added `compression`
+- Tests: 38 → 42
+
+---
+
 ## [0.3.0] — 2026-03-23
 
 The "polish and soul" release. Zero JavaScript. Seasonal colors. Your words deserve better defaults.
@@ -235,4 +279,4 @@ First public release. The hole is open.
 | **JavaScript** | 0 |
 | **License** | TBD |
 | **Repository** | [github.com/Simplinity/burrow](https://github.com/Simplinity/burrow) |
-| **Tests** | 38 unit tests |
+| **Tests** | 42 unit tests |

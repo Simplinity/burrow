@@ -1,0 +1,83 @@
+# Social Features
+
+"Social features" is a phrase that usually precedes a 40-slide investor deck and a mental health crisis. These are not those. These are small, quiet, private-by-default signals that a burrow is alive and connected.
+
+---
+
+## Neighbors
+
+Your burrow root page shows a "Neighbors" section — a list of other burrows whose owners share at least one ring with you. You didn't follow them. You didn't add them. You just happen to be in the same webring, so the server introduces you.
+
+Think of it as a hallway in an apartment building. You don't choose your neighbors. But you nod at them. And sometimes you read their phlog.
+
+---
+
+## Burrow anniversary
+
+If your earliest phlog post is dated 2024, your burrow root shows:
+
+  Est. 2024
+
+Derived from filesystem timestamps. No signup date. No user database. Your first post is your founding document, and the server remembers when you started. It's a small line. It means a lot when someone has been writing for years.
+
+---
+
+## Anonymous reader count
+
+Visit /~user/stats and you get one number:
+
+  Readers this month: 47
+
+One number. One month. No breakdown by page. No referrer data. No geographic heatmap. No "your most popular post this week" notification designed to make you write more of what performed well instead of what you wanted to say.
+
+The count is anonymized — unique IPs hashed and salted daily. We count readers, not reads. Someone who visits your burrow twelve times a day counts as one reader. Because they're one person. This shouldn't be revolutionary, but here we are.
+
+---
+
+## Writing streaks
+
+Run burrow status and, among the other stats, you'll see:
+
+  Current streak: 12 days
+  Longest streak: 34 days
+
+Counted from phlog post dates. Visible only to you. Never shown to readers. Never shown to other burrow owners. This is between you and your filesystem.
+
+Streaks are motivating when they're private. The moment they're public, they become obligations. The moment they're gamified, they become anxiety. Your streak is your own. Keep it or break it. Nobody else knows.
+
+---
+
+## OPML export
+
+  /~user/subscriptions.opml
+
+If you have bookmarks pointing to other burrows, the server generates an OPML file listing their RSS feeds. Import it into any feed reader and you're subscribed to every burrow you've bookmarked.
+
+OPML is a format from 2000. It's XML. It's ugly. It works in every feed reader ever made. We didn't invent a new format. We used the one that already exists. You're welcome.
+
+---
+
+## Canonical gph:// URL
+
+Every HTML page includes a link tag in the head:
+
+  <link rel="canonical" href="gph://yourdomain.com/~user/phlog/my-post" />
+
+Search engines see your Burrow page as canonically belonging to the gph:// protocol. It's aspirational infrastructure — the gph:// protocol isn't fully deployed yet, but when it is, every page already knows its native address.
+
+---
+
+## Last-Modified in meta
+
+Every page shows a meta line under the title with the file's last-modified date:
+
+  ~alice / phlog / on-silence — Mar 17, 2026
+
+The date comes from the filesystem. No frontmatter. No metadata field. stat() is the only source of truth. If you touch the file, the date updates. If you want to lie about when you wrote something, you'll need to learn faketime(1). We respect the hustle.
+
+---
+
+Seven features. All derived from data that already exists — files, timestamps, bookmarks, rings. No new databases. No new inputs. Just new ways of reading what's already there.
+
+/~burrow/server/23-caching-security   ← Caching & Security
+/~burrow/server/25-cli-extras   Next: CLI Extras →

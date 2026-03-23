@@ -1,0 +1,92 @@
+# CLI Extras
+
+Six commands that showed up in v0.9.1 because someone asked "but what if I want to..." and instead of saying no, we wrote the code.
+
+---
+
+## burrow import — Markdown to .gph
+
+  burrow import my-old-blog-post.md
+
+Takes a Markdown file and converts it to .gph format. Headings become # lines. Block quotes become > lines. Code blocks become indented blocks. Links become /path lines. Bold and italic are quietly dropped because this is plaintext and we meant it.
+
+The output file lands in your phlog/ directory with today's date prefix. Review it, edit it, publish it. The converter is intentionally lossy — it strips formatting that doesn't belong here. Think of it as a Marie Kondo pass on your prose.
+
+Works with standard CommonMark. Does not work with MDX, Notion exports with seventeen levels of nested toggles, or whatever Obsidian thinks a wiki-link is. Those are someone else's problem.
+
+---
+
+## burrow lint — validation
+
+  burrow lint
+  burrow lint phlog/my-post.txt
+
+Scans your .gph files for common problems:
+
+- Broken internal links (paths that don't resolve to a file)
+- Unclosed code blocks (indented sections that never end)
+- Lines over 120 characters (because even plaintext has opinions)
+- Missing title (first line should be a # heading)
+- Empty files (you published nothing — on purpose?)
+
+Green means clean. Yellow means warning. Red means you should probably look at that. The exit code is non-zero if any errors are found, so you can stick it in a git pre-commit hook if you're the disciplined type.
+
+No auto-fix. No --fix flag. You wrote it. You fix it.
+
+---
+
+## burrow export-static — the escape hatch
+
+  burrow export-static ./output/
+
+Renders your entire burrow as a static HTML site. Every .txt and .gph file becomes a standalone .html file with the same CSS the server uses. Directory listings become index.html files. Binary files are copied as-is.
+
+The output directory is a complete, self-contained website. Upload it to Netlify, S3, GitHub Pages, or a USB drive you hand to someone in a parking lot. Your words survive even if burrowd doesn't.
+
+This is the "I might leave someday" feature. Every platform should have one. Most don't, because platform incentives and user freedom are not on speaking terms.
+
+---
+
+## burrow changelog — what changed and when
+
+  burrow changelog
+  burrow changelog --since 2026-01-01
+
+Generates a changelog from filesystem modification times. Every file that changed gets a line:
+
+  2026-03-20  phlog/on-walking.txt         modified
+  2026-03-18  phlog/digital-gardens.txt    created
+  2026-03-15  bookmarks.gph                modified
+
+The output is sorted by date, newest first. Created vs. modified is determined by comparing mtime and ctime. It's not git log. It's ls -lt with a friendlier face.
+
+Useful for "what did I do last week" moments, or for generating a human-readable update history for your readers.
+
+---
+
+## burrow colophon — who you are, in numbers
+
+  burrow colophon
+
+Generates a colophon.txt in your burrow root — a snapshot of your burrow's vital signs. File count, word count, post count, first and latest post dates, ring memberships, and the standard "built with Burrow" footer.
+
+The file is .txt. Edit it, delete it, or publish it as-is. It's self-documentation generated from the filesystem. See the Writing Extras article for the full output format.
+
+---
+
+## burrow read-later — your private stack
+
+  burrow read-later /~maya/phlog/on-silence -d "Read this weekend"
+  burrow read-later https://100r.co -d "Hundred Rabbits"
+  burrow reading-list
+
+Saves links to _reading-list.gph — a file that starts with underscore, which means the server returns 404 for it. Private by convention. Your reading intentions are nobody's business.
+
+The reading list uses the same .gph format as bookmarks. You can open it in any text editor. You can grep it. You can cat it. You can delete entries by deleting lines. It's a file. Files are the original to-do list.
+
+---
+
+Six commands. All of them produce or consume plain files. None of them require a network connection. Your burrow is yours even when the WiFi isn't.
+
+/~burrow/server/24-social-features   ← Social Features
+/~burrow/server/01-getting-started   Back to the beginning →

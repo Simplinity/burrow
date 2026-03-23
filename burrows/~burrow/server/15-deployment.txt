@@ -59,5 +59,13 @@ Access logging:
 
 Structured logging via tracing. Every request gets a single log line. No log4j. No log rotation daemon. No 50GB /var/log surprise on a Monday morning.
 
+---
+
+Config reload without restart:
+
+  kill -HUP $(pidof burrowd)
+
+Re-reads burrow.conf and rebuilds the search index. Zero downtime. The Unix way.
+
 /~burrow/server/14-tls   ← TLS & Security
 /~burrow/server/15b-production   Next: Production Hosting →

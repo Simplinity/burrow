@@ -99,4 +99,4 @@ The output is a .txt file. Edit it, delete it, or publish it as-is. Your burrow 
 Saves links to _reading-list.gph — a private file (starts with _, invisible to HTTP). Same .gph format as bookmarks, but only you can see it. Your intentions, for yourself. No algorithm. No platform. Just a file.
 
 /~burrow/server/20-custom-domains   ← Custom Domains
-/~burrow/server/01-getting-started   Back to the beginning →
+/~burrow/server/22-conventions   Next: Filesystem Conventions →

@@ -2,7 +2,7 @@
 
 ```
          ___
-        /   \      burrow client v0.1.0
+        /   \      burrow client v0.9.1
        | o o |     "Read things. Write things.
         \ _ /      Bookmark the good things."
         /| |\
@@ -22,7 +22,7 @@ Burrow is not a time machine. We're taking the *philosophy* of Gopher — text-f
 
 **Identity is a path.** Your address is `gph://server/~you`. The tilde is a direct homage to Unix home directories. Your burrow is not an account in a database — it's a directory on a server. Migration means copying files. Like moving apartments.
 
-**Three protocols, one binary.** HTTPS for the browser crowd (the gateway to the normal world), Gemini for the small-web purists (automatic `.gph` → `.gmi` conversion), and `gph://` for the native clients (coming soon — Tauri desktop, mobile reader). Every protocol serves the same content. burrowd is a polyglot.
+**Three protocols, one binary.** HTTPS for the browser crowd (the gateway to the normal world), Gemini for the small-web purists (automatic `.gph` to `.gmi` conversion), and `gph://` for the native clients (coming soon). Every protocol serves the same content. burrowd is a polyglot. ETag caching, CSP headers, optional compression, and SIGHUP hot-reload make it production-ready.
 
 **The philosophy of less.** No followers. No likes. No notifications. No comments. No resharing. No DMs. If you appreciate something, bookmark it (public curation) or write a response on your own phlog (public conversation). Both require effort. That's the point. The social dynamics emerge from the content, not from engagement features.
 
@@ -56,7 +56,7 @@ burrow edit about.txt
 burrow ls
 burrow ls phlog/
 
-# Stats: files, size, latest post
+# Stats: files, size, latest post, writing streak
 burrow status
 ```
 
@@ -163,6 +163,18 @@ Renders `.gph` markup in your terminal — headings, quotes, links, code blocks.
 # Export a backup
 burrow export ~/backups/alice-2026-03.tar.gz
 
+# Export a static HTML site
+burrow export-static ./output/
+
+# Validate .gph files
+burrow lint
+
+# Import Markdown
+burrow import post.md
+
+# Generate changelog from file mtimes
+burrow changelog
+
 # Push your burrow to a remote server
 burrow push user@phlogosphere.net:/srv/burrow/burrows/
 
@@ -173,7 +185,7 @@ burrow pull user@phlogosphere.net:/srv/burrow/burrows/~bruno/
 burrow timecapsule 2026
 ```
 
-`export` creates a tar.gz backup. `push`/`pull` use rsync over SSH — your burrow is files, you copy them. `timecapsule` produces a yearly stats summary with post counts, word totals, and a chronological index. `colophon` generates a publishable metadata page.
+`export` creates a tar.gz backup. `export-static` generates a complete static HTML site you can host anywhere. `push`/`pull` use rsync over SSH — your burrow is files, you copy them. `timecapsule` produces a yearly stats summary with post counts, word totals, and a chronological index. `colophon` generates a publishable metadata page. `changelog` generates a changelog from file modification times. `lint` validates your .gph files. `import` converts Markdown to .gph.
 
 ### Colophon
 

@@ -83,5 +83,19 @@ Firewall.
 
 Four ports. burrowd doesn't phone home, doesn't check for updates, doesn't sync to any cloud. It sits there, on your server, serving files, until you tell it to stop. Like a good Unix daemon should.
 
+---
+
+Production tips.
+
+Enable compression for bandwidth savings (especially useful with many readers):
+
+  compression = true    # in burrow.conf
+
+Reload config without downtime:
+
+  kill -HUP $(pidof burrowd)
+
+This re-reads burrow.conf and rebuilds the search index. No restart needed. See the Caching & Security article for the full details.
+
 /~burrow/server/15-deployment   ← Deployment
 /~burrow/server/16-cli   Next: CLI Reference →

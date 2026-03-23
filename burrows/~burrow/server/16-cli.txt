@@ -1,6 +1,6 @@
 # CLI Reference
 
-The burrow CLI is the power tool. Twenty-seven commands. Zero ambiguity.
+The burrow CLI is the power tool. Thirty-three commands. Zero ambiguity.
 
 ---
 
@@ -21,8 +21,10 @@ Publishing and syncing:
   burrow push <remote>            sync to remote server via rsync/SSH
   burrow pull <remote>            sync from remote server
   burrow export [output]          backup as .tar.gz
+  burrow export-static [dir]      render as static HTML site
+  burrow import <file.md>         convert Markdown to .gph
 
-Your burrow is a directory of files. Push copies it to a server. Pull copies it back. Export compresses it. No API. No authentication token. No "download your data" button that gives you a useless JSON blob. It's files. You copy them. Done.
+Your burrow is a directory of files. Push copies it to a server. Pull copies it back. Export compresses it. Export-static renders the whole thing as standalone HTML. Import brings Markdown in from the outside world. No API. No authentication token. No "download your data" button that gives you a useless JSON blob. It's files. You copy them. Done.
 
 ---
 
@@ -41,11 +43,16 @@ Social features:
 
 ---
 
-Search and discovery:
+Search, discovery, and maintenance:
 
   burrow search "query"           grep-style search, highlighted matches
   burrow search "query" --all     search all burrows, not just yours
   burrow timecapsule [year]       generate a year-in-review
+  burrow lint [path]              validate .gph files for common errors
+  burrow changelog [--since]      what changed and when (from mtimes)
+  burrow colophon                 generate a metadata snapshot
+  burrow read-later <url> [-d]    save to private reading list
+  burrow reading-list             show your reading list
 
 The search command is local — it searches your filesystem directly, with case-insensitive matching and yellow-highlighted terms. It shows file paths with line numbers. It's grep with a better UI.
 

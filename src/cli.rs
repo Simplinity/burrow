@@ -1067,6 +1067,7 @@ fn cmd_server_init(burrows_root: &Path, domain: &str, port: u16) {
         tls_cert: None,
         tls_key: None,
         gemini_port: None,
+        gph_port: None,
         compression: false,
     };
     cfg.save(&conf_path);

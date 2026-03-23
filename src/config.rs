@@ -9,6 +9,7 @@ pub struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub gemini_port: Option<u16>,
+    pub gph_port: Option<u16>,
     pub compression: bool,
 }
 
@@ -21,6 +22,7 @@ impl Default for ServerConfig {
             tls_cert: None,
             tls_key: None,
             gemini_port: None,
+            gph_port: None,
             compression: false,
         }
     }
@@ -53,8 +55,16 @@ impl ServerConfig {
         self.gemini_port.is_some() && self.has_tls()
     }
 
+    pub fn has_gph(&self) -> bool {
+        self.gph_port.is_some() && self.has_tls()
+    }
+
     pub fn gemini_bind_addr(&self) -> Option<String> {
-        self.gemini_port.map(|p| format!("127.0.0.1:{}", p))
+        self.gemini_port.map(|p| format!("0.0.0.0:{}", p))
+    }
+
+    pub fn gph_bind_addr(&self) -> Option<String> {
+        self.gph_port.map(|p| format!("0.0.0.0:{}", p))
     }
 
     pub fn load() -> Self {
@@ -93,6 +103,10 @@ impl ServerConfig {
             } else if let Some(val) = line.strip_prefix("gemini_port = ") {
                 if let Ok(p) = val.trim().parse() {
                     config.gemini_port = Some(p);
+                }
+            } else if let Some(val) = line.strip_prefix("gph_port = ") {
+                if let Ok(p) = val.trim().parse() {
+                    config.gph_port = Some(p);
                 }
             } else if let Some(val) = line.strip_prefix("compression = ") {
                 config.compression = val.trim() == "true";

@@ -529,6 +529,15 @@ async fn main() {
         tokio::spawn(gemini_listener(state.clone(), gemini_addr, cert, key));
     }
 
+    // Spawn gph:// protocol listener if configured
+    if cfg.has_gph() {
+        let gph_addr = cfg.gph_bind_addr().unwrap();
+        let cert = cfg.tls_cert.clone().unwrap();
+        let key = cfg.tls_key.clone().unwrap();
+        println!("  gph:// native:  \x1b[36mgph://{}:{}\x1b[0m", cfg.domain, cfg.gph_port.unwrap());
+        tokio::spawn(gph_listener(state.clone(), gph_addr, cert, key));
+    }
+
     // Spawn outgoing federation pings (background, fire-and-forget)
     let ping_domain = cfg.domain.clone();
     tokio::spawn(async move {
@@ -2574,6 +2583,179 @@ async fn gemini_serve_path(url_path: &str, domain: &str) -> String {
         let content = read_file_checked(&canonical).await;
         let body = render::render_gph_to_gmi(&content);
         format!("20 text/gemini; charset=utf-8\r\n{}", body)
+    }
+}
+
+// ── gph:// Native Protocol ───────────────────────────────────────
+
+async fn gph_listener(state: AppState, bind_addr: String, tls_cert: String, tls_key: String) {
+    use tokio_rustls::TlsAcceptor;
+    use std::io::BufReader;
+
+    let cert_data = std::fs::read(&tls_cert).unwrap_or_else(|e| {
+        eprintln!("  \x1b[31m✗\x1b[0m gph: failed to read cert {}: {}", tls_cert, e);
+        std::process::exit(1);
+    });
+    let key_data = std::fs::read(&tls_key).unwrap_or_else(|e| {
+        eprintln!("  \x1b[31m✗\x1b[0m gph: failed to read key {}: {}", tls_key, e);
+        std::process::exit(1);
+    });
+
+    let certs = rustls_pemfile::certs(&mut BufReader::new(cert_data.as_slice()))
+        .filter_map(|c| c.ok())
+        .collect::<Vec<_>>();
+    let key = rustls_pemfile::private_key(&mut BufReader::new(key_data.as_slice()))
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| {
+            eprintln!("  \x1b[31m✗\x1b[0m gph: no private key found in {}", tls_key);
+            std::process::exit(1);
+        });
+
+    let tls_config = tokio_rustls::rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .unwrap_or_else(|e| {
+            eprintln!("  \x1b[31m✗\x1b[0m gph: TLS config error: {}", e);
+            std::process::exit(1);
+        });
+
+    let acceptor = TlsAcceptor::from(Arc::new(tls_config));
+    let listener = tokio::net::TcpListener::bind(&bind_addr).await.unwrap_or_else(|e| {
+        eprintln!("  \x1b[31m✗\x1b[0m gph: failed to bind {}: {}", bind_addr, e);
+        std::process::exit(1);
+    });
+
+    tracing::info!("gph:// listening on {}", bind_addr);
+
+    loop {
+        let (stream, _addr) = match listener.accept().await {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let acceptor = acceptor.clone();
+        let state = state.clone();
+        tokio::spawn(async move {
+            if let Ok(mut tls_stream) = acceptor.accept(stream).await {
+                handle_gph_request(&mut tls_stream, &state).await;
+            }
+        });
+    }
+}
+
+async fn handle_gph_request<S: AsyncReadExt + AsyncWriteExt + Unpin>(stream: &mut S, state: &AppState) {
+    // Read request line: "gph://host/path\r\n" (max 1024 bytes)
+    let mut buf = [0u8; 1026];
+    let n = match stream.read(&mut buf).await {
+        Ok(n) if n > 0 => n,
+        _ => return,
+    };
+
+    let request = String::from_utf8_lossy(&buf[..n]);
+    let request = request.trim();
+
+    // Parse URL: "gph://host/path" → "/path"
+    let url_path = if let Some(rest) = request.strip_prefix("gph://") {
+        match rest.find('/') {
+            Some(pos) => &rest[pos..],
+            None => "/",
+        }
+    } else {
+        let _ = stream.write_all(b"=> error\nBad request: expected gph:// URL\n").await;
+        return;
+    };
+
+    let url_path = url_path.trim_end_matches('\r').trim_end_matches('\n');
+    let domain = &state.domain;
+
+    // Increment page counter
+    if let Some(burrow) = url_path.trim_start_matches('/').split('/').next().filter(|s| s.starts_with('~')) {
+        state.page_counts.increment(burrow);
+    }
+
+    let response = gph_serve_path(url_path, domain).await;
+    let _ = stream.write_all(response.as_bytes()).await;
+}
+
+async fn gph_serve_path(url_path: &str, domain: &str) -> String {
+    let path = url_path.trim_start_matches('/');
+
+    // Home page
+    if path.is_empty() {
+        let burrows = list_burrows().await;
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# {} — burrows\n\n", domain));
+        for b in &burrows {
+            body.push_str(&format!("/  {}   {}\n", b.name, b.description));
+        }
+        return body;
+    }
+
+    // Draft visibility
+    if path.split('/').any(|seg| seg.starts_with('_') || seg.starts_with('.')) {
+        return "=> error\nNot found\n".to_string();
+    }
+
+    // Depth limit
+    if path.split('/').filter(|s| !s.is_empty()).count() > MAX_PATH_DEPTH {
+        return "=> error\nNot found\n".to_string();
+    }
+
+    let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
+    let fs_path = path::PathBuf::from("burrows").join(path);
+
+    // Resolve path: exact, then .txt, then .gph
+    let canonical = if let Ok(p) = fs::canonicalize(&fs_path).await {
+        p
+    } else if let Ok(p) = fs::canonicalize(fs_path.with_extension("txt")).await {
+        p
+    } else if let Ok(p) = fs::canonicalize(fs_path.with_extension("gph")).await {
+        p
+    } else {
+        return "=> error\nNot found\n".to_string();
+    };
+
+    // Path traversal check
+    if !canonical.starts_with(&burrows_root) {
+        return "=> error\nNot found\n".to_string();
+    }
+
+    if canonical.is_dir() {
+        // Directory listing
+        let entries = list_directory(&canonical, &burrows_root).await;
+        let title = read_title(&canonical).await;
+        let display = title.as_deref().unwrap_or(path);
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# {}\n\n", display));
+        for e in &entries {
+            let symbol = if e.entry_type == EntryType::Directory { "/" } else { "¶" };
+            body.push_str(&format!("{}  {}   {}   {}\n", symbol, e.name, e.description, e.meta));
+        }
+        body
+    } else {
+        // Text file — serve raw .gph content with type header and metadata
+        let content = read_file_checked(&canonical).await;
+        let filename = canonical.file_name().unwrap().to_str().unwrap();
+        let words = content.split_whitespace().count();
+        let read_min = (words as f64 / 230.0).ceil() as usize;
+
+        let modified = file_modified_date(&canonical).await.unwrap_or_default();
+
+        let doc_type = if filename == "guestbook.gph" {
+            "guestbook"
+        } else if filename == "bookmarks.gph" {
+            "bookmarks"
+        } else {
+            "text"
+        };
+
+        // Extract author from path
+        let author = path.split('/').next().filter(|s| s.starts_with('~')).unwrap_or("");
+
+        let mut body = format!("=> {}\n", doc_type);
+        body.push_str(&format!("@ words={} read_min={} modified={} author={}\n", words, read_min, modified, author));
+        body.push_str(&content);
+        body
     }
 }
 

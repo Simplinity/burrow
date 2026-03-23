@@ -606,6 +606,8 @@ fn build_crumbs(path: &str, domain: &str) -> String {
 }
 
 pub fn render_gph(content: &str) -> String {
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let content = content.replace("@today", &today);
     let mut html = String::new();
     let mut in_code = false;
 
@@ -796,6 +798,8 @@ pub fn discover_page(burrows: &[BurrowEntry], latest_posts: &[(String, String, S
 // ── Gemtext rendering ───────────────────────────────────────────
 
 pub fn render_gph_to_gmi(content: &str) -> String {
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let content = content.replace("@today", &today);
     let mut gmi = String::new();
     let mut in_code = false;
 

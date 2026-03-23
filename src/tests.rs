@@ -65,6 +65,14 @@ fn render_gph_empty_lines_skipped() {
 }
 
 #[test]
+fn render_gph_expands_at_today() {
+    let html = render::render_gph("Last updated: @today");
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    assert!(html.contains(&today));
+    assert!(!html.contains("@today"));
+}
+
+#[test]
 fn render_gph_mixed_content() {
     let content = "# Title\n\nSome text.\n\n> A quote\n\n---\n\nMore text.";
     let html = render::render_gph(content);

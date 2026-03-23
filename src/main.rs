@@ -2798,8 +2798,8 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
     if path.is_empty() {
         let burrows = list_burrows().await;
         let mut body = String::from("=> directory\n");
-        body.push_str(&format!("# {} — burrows\n\n", domain));
-        body.push_str("?  Search   /search\n\n");
+        body.push_str(&format!("# {}\n", domain));
+        body.push_str(&format!("Community burrow server — {} burrows\n\n", burrows.len()));
         for b in &burrows {
             body.push_str(&format!("/  {}   {}   {}\n", b.path, b.name, b.description));
         }

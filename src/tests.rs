@@ -73,6 +73,16 @@ fn render_gph_expands_at_today() {
 }
 
 #[test]
+fn extract_series_number_works() {
+    assert_eq!(extract_series_number("part-01"), Some(("part-", 1)));
+    assert_eq!(extract_series_number("part-12"), Some(("part-", 12)));
+    assert_eq!(extract_series_number("chapter_3"), Some(("chapter_", 3)));
+    assert_eq!(extract_series_number("essay-on-rust"), None); // "rust" is not a number
+    assert_eq!(extract_series_number("no-number-here"), None);
+    assert_eq!(extract_series_number("plain"), None);
+}
+
+#[test]
 fn render_gph_mixed_content() {
     let content = "# Title\n\nSome text.\n\n> A quote\n\n---\n\nMore text.";
     let html = render::render_gph(content);

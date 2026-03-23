@@ -1,0 +1,11 @@
+# Why Plaintext Matters — Part 2: The Solution
+
+Plaintext is the most durable, portable, and honest format ever invented.
+
+A .txt file from 1985 opens in 2026 without conversion, without a plugin, without a subscription. Try that with a Word document from 2005. Or a Flash animation from 2010. Or a Medium post from a startup that no longer exists.
+
+Plaintext doesn't go out of business. It doesn't get acquired. It doesn't pivot to video.
+
+---
+
+Your words, in a format that outlives every platform.

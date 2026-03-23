@@ -192,23 +192,57 @@ pub fn directory_page(path: &str, title: Option<&str>, entries: &[BurrowEntry], 
 }
 
 pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
-    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent)
+    text_page_with_mentions(path, filename, content, &[], &[], "", domain, accent, None)
 }
 
-pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>) -> String {
+use crate::SeriesInfo;
+
+pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>) -> String {
     let crumbs = build_crumbs(path, domain);
     let words = content.split_whitespace().count();
     let read_min = (words as f64 / 230.0).ceil() as usize;
     let rendered = render_gph(content);
+
+    let series_meta = if let Some(s) = series {
+        format!(" · Part {} of {}", s.current, s.total)
+    } else {
+        String::new()
+    };
 
     let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
     html.push_str(&format!(r#"<div class="progress"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
-<div class="meta">~{read_min} min read · {words} words</div>
+<div class="meta">~{read_min} min read · {words} words{series_meta}</div>
 {rendered}
 </div>"#));
+
+    // Series navigation (← Part 2 · Part 3 of 5 · Part 4 →)
+    if let Some(s) = series {
+        html.push_str(r#"<div style="margin:24px 0 8px;padding:12px 20px;background:var(--faint);border-radius:8px;font-family:'JetBrains Mono',monospace;display:flex;justify-content:space-between;align-items:center;font-size:13px;">"#);
+        if let Some(prev) = &s.prev_path {
+            html.push_str(&format!(
+                r#"<a href="{}" style="color:var(--accent);text-decoration:none;">← Part {}</a>"#,
+                html_escape_attr(prev), s.current - 1
+            ));
+        } else {
+            html.push_str("<span></span>");
+        }
+        html.push_str(&format!(
+            r#"<span style="color:var(--muted);">Part {} of {}</span>"#,
+            s.current, s.total
+        ));
+        if let Some(next) = &s.next_path {
+            html.push_str(&format!(
+                r#"<a href="{}" style="color:var(--accent);text-decoration:none;">Part {} →</a>"#,
+                html_escape_attr(next), s.current + 1
+            ));
+        } else {
+            html.push_str("<span></span>");
+        }
+        html.push_str("</div>");
+    }
 
     // Ring navigation
     for ring in rings {

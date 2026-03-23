@@ -1,0 +1,11 @@
+# Why Plaintext Matters — Part 1: The Problem
+
+The average web page in 2026 weighs 2.8 MB. Most of that weight is not your words.
+
+It's trackers. Ad networks. Analytics scripts. A consent banner more complex than the content you came for. Font files for fonts you didn't ask for. JavaScript bundles that execute before you've read a single sentence.
+
+Your words — the actual reason the page exists — account for maybe 5 KB of that 2.8 MB. That's 0.2%. The rest is infrastructure for monetizing your attention.
+
+---
+
+This is a three-part series. You're reading part one.

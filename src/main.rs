@@ -735,7 +735,8 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state)
                     let burrow_name = path.split('/').next().unwrap_or("");
                     let all_rings = load_all_rings().await;
                     let rings = find_rings_for_burrow(&all_rings, burrow_name);
-                    return Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref())).into_response();
+                    let series = detect_series(&p, &path).await;
+                    return Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref())).into_response();
                 }
             }
             if let Ok(p) = fs::canonicalize(&with_gph).await {
@@ -799,9 +800,101 @@ async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state)
             let burrow_name = path.split('/').next().unwrap_or("");
             let all_rings = load_all_rings().await;
             let rings = find_rings_for_burrow(&all_rings, burrow_name);
-            Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref())).into_response()
+            let series = detect_series(&canonical, &path).await;
+            Html(render::text_page_with_mentions(&path, filename, &content, &mentions, &rings, burrow_name, &domain, accent.as_deref(), series.as_ref())).into_response()
         }
     }
+}
+
+// ── Series Detection ─────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct SeriesInfo {
+    pub current: usize,
+    pub total: usize,
+    pub prev_path: Option<String>,
+    pub next_path: Option<String>,
+}
+
+/// Detect if a file is part of a series (part-01.txt, part-02.txt, etc.)
+/// Returns SeriesInfo if the file matches the pattern and siblings exist.
+async fn detect_series(canonical: &path::Path, url_path: &str) -> Option<SeriesInfo> {
+    let filename = canonical.file_name()?.to_str()?;
+    let parent = canonical.parent()?;
+
+    // Match patterns: part-01.txt, part-02.txt, etc.
+    let stem = filename.strip_suffix(".txt")
+        .or_else(|| filename.strip_suffix(".gph"))?;
+
+    // Extract prefix and number: "part-01" → ("part-", 1)
+    let (prefix, current_num) = extract_series_number(stem)?;
+
+    // Scan directory for siblings with same prefix
+    let mut parts: Vec<(usize, String)> = Vec::new();
+    if let Ok(mut entries) = fs::read_dir(parent).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let name = entry.file_name().to_string_lossy().to_string();
+            let entry_stem = name.strip_suffix(".txt")
+                .or_else(|| name.strip_suffix(".gph"));
+            if let Some(s) = entry_stem {
+                if let Some((p, num)) = extract_series_number(s) {
+                    if p == prefix {
+                        parts.push((num, name));
+                    }
+                }
+            }
+        }
+    }
+
+    // Only a series if there are at least 2 parts
+    if parts.len() < 2 {
+        return None;
+    }
+
+    parts.sort_by_key(|(n, _)| *n);
+    let total = parts.len();
+    let current_idx = parts.iter().position(|(n, _)| *n == current_num)?;
+    let current = current_idx + 1; // 1-indexed for display
+
+    // Build prev/next paths relative to the URL
+    let url_parent = url_path.rsplit_once('/').map(|(p, _)| p).unwrap_or("");
+    let prev_path = if current_idx > 0 {
+        let prev_file = &parts[current_idx - 1].1;
+        let prev_slug = prev_file.strip_suffix(".txt")
+            .or_else(|| prev_file.strip_suffix(".gph"))
+            .unwrap_or(prev_file);
+        Some(format!("/{}/{}", url_parent, prev_slug))
+    } else {
+        None
+    };
+    let next_path = if current_idx < parts.len() - 1 {
+        let next_file = &parts[current_idx + 1].1;
+        let next_slug = next_file.strip_suffix(".txt")
+            .or_else(|| next_file.strip_suffix(".gph"))
+            .unwrap_or(next_file);
+        Some(format!("/{}/{}", url_parent, next_slug))
+    } else {
+        None
+    };
+
+    Some(SeriesInfo { current, total, prev_path, next_path })
+}
+
+/// Extract series prefix and number from a stem like "part-01" → Some(("part-", 1))
+fn extract_series_number(stem: &str) -> Option<(&str, usize)> {
+    // Find the last group of digits preceded by a separator (- or _)
+    for sep in ['-', '_'] {
+        if let Some(pos) = stem.rfind(sep) {
+            let prefix = &stem[..=pos]; // includes separator
+            let num_str = &stem[pos + 1..];
+            if !num_str.is_empty() && num_str.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(num) = num_str.parse::<usize>() {
+                    return Some((prefix, num));
+                }
+            }
+        }
+    }
+    None
 }
 
 const MAX_BINARY_SIZE: u64 = 2_097_152; // 2 MB for images/binaries

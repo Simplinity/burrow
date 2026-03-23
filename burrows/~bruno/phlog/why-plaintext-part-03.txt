@@ -1,0 +1,12 @@
+# Why Plaintext Matters — Part 3: The Future
+
+Burrow is built on a bet: that enough people are tired of the extractive web to build something better. Not different for the sake of different. Better in ways that matter.
+
+Faster. Because 5 KB loads in 50ms on any connection.
+Durable. Because text files don't break.
+Honest. Because there's nothing hiding behind the words.
+Yours. Because the files are on your disk, not in someone's database.
+
+---
+
+The future of publishing is the past of publishing, with better typography.

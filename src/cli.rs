@@ -118,6 +118,11 @@ enum Commands {
         #[arg(short, long)]
         output: Option<String>,
     },
+    /// Export your burrow as a static HTML site
+    ExportStatic {
+        /// Output directory (default: ./output/)
+        output: Option<String>,
+    },
     /// Lint your burrow for common errors
     Lint {
         /// Optional path to lint (default: entire burrow)
@@ -203,6 +208,13 @@ enum ServerCommands {
     },
 }
 
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 fn main() {
     let cli = Cli::parse();
     let burrows_root = find_burrows_root();
@@ -225,6 +237,7 @@ fn main() {
         Commands::ReadingList => cmd_reading_list(&burrows_root),
         Commands::Timecapsule { year } => cmd_timecapsule(&burrows_root, year),
         Commands::Export { output } => cmd_export(&burrows_root, output.as_deref()),
+        Commands::ExportStatic { output } => cmd_export_static(&burrows_root, output.as_deref()),
         Commands::Ring { command } => match command {
             RingCommands::Create { name, desc } => cmd_ring_create(&burrows_root, &name, desc.as_deref()),
             RingCommands::List => cmd_ring_list(&burrows_root),
@@ -2036,6 +2049,208 @@ fn latest_phlog_post(phlog_dir: &Path) -> Option<String> {
 // ── Lint ─────────────────────────────────────────────────────────
 
 const MAX_TEXT_SIZE: u64 = 65_536; // 64 KB
+
+fn cmd_export_static(burrows_root: &Path, output: Option<&str>) {
+    let active = find_active_burrow(burrows_root);
+    let burrow_dir = match &active {
+        Some(name) => burrows_root.join(name),
+        None => {
+            eprintln!("No active burrow. Run: burrow switch <name>");
+            return;
+        }
+    };
+    let burrow_name = active.as_ref().unwrap();
+
+    let output_dir = Path::new(output.unwrap_or("./output"));
+    fs::create_dir_all(output_dir).unwrap();
+
+    let _desc = read_description(&burrow_dir);
+    let mut file_count = 0;
+
+    // CSS for static export
+    let css = r#"<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Literata:ital,wght@0,400;0,500;1,400&display=swap');
+:root{--surface:#faf9f7;--text:#1a1a1a;--muted:#737373;--faint:#ececea;--accent:#1a8a6a}
+@media(prefers-color-scheme:dark){:root{--surface:#161614;--text:#e8e6e1;--muted:#8a8a8a;--faint:#222220;--accent:#3ab89a}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Literata',Georgia,serif;background:var(--surface);color:var(--text);max-width:680px;margin:0 auto;padding:24px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;margin:24px 0 8px}
+p{line-height:1.7;margin:12px 0}
+blockquote{border-left:3px solid var(--faint);padding-left:16px;color:var(--muted);margin:16px 0}
+pre{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--faint);padding:16px;border-radius:6px;overflow-x:auto;margin:16px 0;line-height:1.5}
+hr{border:none;border-top:1px solid var(--faint);margin:24px 0}
+nav{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);margin-bottom:24px}
+nav a{margin:0 4px}
+.meta{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:20px}
+.dir-item{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--faint)}
+.dir-item .name{font-family:'JetBrains Mono',monospace;font-size:14px}
+.dir-item .desc{font-size:13px;color:var(--muted)}
+footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--faint);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+</style>"#;
+
+    // Helper: render .gph content to HTML (simplified version for static export)
+    let render_content = |content: &str| -> String {
+        let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+        let mut html = String::new();
+        let mut in_code = false;
+
+        for raw_line in content.lines() {
+            let owned;
+            let line = if !in_code && !raw_line.starts_with("  ") {
+                owned = raw_line.replace("@today", &today);
+                owned.as_str()
+            } else {
+                raw_line
+            };
+
+            if !in_code && line.starts_with("  ") {
+                html.push_str("<pre>");
+                html.push_str(&html_escape(line.trim_start()));
+                html.push('\n');
+                in_code = true;
+                continue;
+            }
+            if in_code {
+                if line.starts_with("  ") || line.is_empty() {
+                    html.push_str(&html_escape(if line.is_empty() { "" } else { line.trim_start() }));
+                    html.push('\n');
+                    continue;
+                } else {
+                    html.push_str("</pre>");
+                    in_code = false;
+                }
+            }
+
+            if let Some(heading) = line.strip_prefix("# ") {
+                html.push_str(&format!("<h1>{}</h1>", html_escape(heading)));
+            } else if let Some(quote) = line.strip_prefix("> ") {
+                html.push_str(&format!("<blockquote><p>{}</p></blockquote>", html_escape(quote)));
+            } else if line == "---" {
+                html.push_str("<hr>");
+            } else if let Some(rest) = line.strip_prefix("→ ") {
+                let url = rest.trim();
+                html.push_str(&format!(r#"<p><a href="{}">→ {}</a></p>"#, html_escape(url), html_escape(url)));
+            } else if line.starts_with("/~") {
+                let parts: Vec<&str> = line.splitn(2, "   ").collect();
+                let link = parts[0].trim();
+                let link_desc = parts.get(1).unwrap_or(&link);
+                html.push_str(&format!(r#"<p><a href="{}.html">{}</a></p>"#, html_escape(link), html_escape(link_desc)));
+            } else if line.is_empty() {
+                continue;
+            } else {
+                html.push_str(&format!("<p>{}</p>", html_escape(line)));
+            }
+        }
+        if in_code {
+            html.push_str("</pre>");
+        }
+        html
+    };
+
+    // Recursively export a directory
+    fn export_dir(
+        dir: &Path,
+        rel_path: &str,
+        output_dir: &Path,
+        burrow_name: &str,
+        css: &str,
+        render_content: &dyn Fn(&str) -> String,
+        file_count: &mut usize,
+    ) {
+        let mut entries: Vec<(String, bool)> = Vec::new();
+        if let Ok(items) = fs::read_dir(dir) {
+            for item in items.flatten() {
+                let name = item.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') || name.starts_with('_') {
+                    continue;
+                }
+                let is_dir = item.path().is_dir();
+                entries.push((name, is_dir));
+            }
+        }
+        entries.sort_by(|a, b| {
+            let type_ord = |e: &(String, bool)| if e.1 { 0 } else { 1 };
+            type_ord(a).cmp(&type_ord(b)).then(a.0.cmp(&b.0))
+        });
+
+        // Generate index.html for this directory
+        let mut index_html = format!(
+            r#"<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{} — {}</title>{}</head><body>"#,
+            if rel_path.is_empty() { burrow_name } else { rel_path },
+            burrow_name,
+            css,
+        );
+        index_html.push_str(&format!("<nav><a href=\"/\">home</a></nav>"));
+        index_html.push_str(&format!("<h1>{}</h1>", if rel_path.is_empty() { burrow_name } else { rel_path }));
+
+        for (name, is_dir) in &entries {
+            if *is_dir {
+                index_html.push_str(&format!(
+                    r#"<div class="dir-item"><a class="name" href="{}/index.html">{}/</a></div>"#,
+                    name, name
+                ));
+                // Recurse
+                let sub_rel = if rel_path.is_empty() { name.clone() } else { format!("{}/{}", rel_path, name) };
+                let sub_output = output_dir.join(name);
+                fs::create_dir_all(&sub_output).unwrap();
+                export_dir(&dir.join(name), &sub_rel, &sub_output, burrow_name, css, render_content, file_count);
+            } else {
+                let display_name = name.trim_end_matches(".txt").trim_end_matches(".gph");
+                let first_line = fs::read_to_string(dir.join(name))
+                    .unwrap_or_default()
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .trim_start_matches("# ")
+                    .to_string();
+                index_html.push_str(&format!(
+                    r#"<div class="dir-item"><a class="name" href="{}.html">{}</a><span class="desc">{}</span></div>"#,
+                    display_name, name, html_escape(&first_line)
+                ));
+
+                // Generate HTML page for this file
+                if name.ends_with(".txt") || name.ends_with(".gph") {
+                    let content = fs::read_to_string(dir.join(name)).unwrap_or_default();
+                    let title = content.lines().next().unwrap_or("").trim_start_matches("# ");
+                    let words = content.split_whitespace().count();
+                    let read_min = (words as f64 / 230.0).ceil() as usize;
+                    let rendered = render_content(&content);
+
+                    let page_html = format!(
+                        r#"<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{} — {}</title>{}</head><body>
+<nav><a href="index.html">← back</a></nav>
+<div class="meta">~{} min read · {} words</div>
+{}
+<footer>Exported from Burrow · {}</footer>
+</body></html>"#,
+                        html_escape(title), burrow_name, css, read_min, words, rendered, burrow_name
+                    );
+                    let out_file = output_dir.join(format!("{}.html", display_name));
+                    fs::write(&out_file, page_html).unwrap();
+                    *file_count += 1;
+                }
+            }
+        }
+
+        index_html.push_str("<footer>Exported from Burrow</footer></body></html>");
+        fs::write(output_dir.join("index.html"), index_html).unwrap();
+    }
+
+    println!("  Exporting {} to {}", burrow_name, output_dir.display());
+    export_dir(
+        &burrow_dir,
+        "",
+        output_dir,
+        burrow_name,
+        css,
+        &render_content,
+        &mut file_count,
+    );
+
+    println!("  \x1b[32m✓\x1b[0m {} pages exported to {}", file_count, output_dir.display());
+    println!("  Open {}/index.html in a browser to preview.", output_dir.display());
+}
 
 fn cmd_lint(burrows_root: &Path, path: Option<&str>) {
     let active = find_active_burrow(burrows_root);

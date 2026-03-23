@@ -86,6 +86,8 @@ enum Commands {
         /// Year to generate for (default: current year)
         year: Option<i32>,
     },
+    /// Generate a colophon.txt for your burrow (metadata, stats, rings)
+    Colophon,
     /// Export your burrow as a tar.gz backup
     Export {
         /// Output file path (default: ~/burrow-export-YYYY-MM-DD.tar.gz)
@@ -193,6 +195,7 @@ fn main() {
         Commands::Search { query, all } => cmd_search(&burrows_root, &query, all),
         Commands::Push { remote } => cmd_push(&burrows_root, &remote),
         Commands::Pull { remote } => cmd_pull(&burrows_root, &remote),
+        Commands::Colophon => cmd_colophon(&burrows_root),
         Commands::Timecapsule { year } => cmd_timecapsule(&burrows_root, year),
         Commands::Export { output } => cmd_export(&burrows_root, output.as_deref()),
         Commands::Ring { command } => match command {
@@ -616,6 +619,196 @@ fn cmd_status(burrows_root: &Path, server_url: &str) {
         }
         println!();
     }
+}
+
+fn cmd_colophon(burrows_root: &Path) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+    let desc = read_description(&root);
+
+    let (file_count, total_size) = count_files_recursive(&root);
+    let size_str = if total_size < 1024 {
+        format!("{} B", total_size)
+    } else if total_size < 1_048_576 {
+        format!("{:.1} KB", total_size as f64 / 1024.0)
+    } else {
+        format!("{:.2} MB", total_size as f64 / 1_048_576.0)
+    };
+
+    // Count total words across all text files
+    let total_words = count_words_recursive(&root);
+
+    // Count phlog posts
+    let phlog_dir = root.join("phlog");
+    let post_count = if phlog_dir.is_dir() {
+        fs::read_dir(&phlog_dir)
+            .map(|d| d.flatten().filter(|e| {
+                let n = e.file_name().to_string_lossy().to_string();
+                !n.starts_with('.') && !n.starts_with('_') && (n.ends_with(".txt") || n.ends_with(".gph"))
+            }).count())
+            .unwrap_or(0)
+    } else {
+        0
+    };
+
+    // Find earliest and latest post dates
+    let mut dates: Vec<String> = Vec::new();
+    if phlog_dir.is_dir() {
+        if let Ok(entries) = fs::read_dir(&phlog_dir) {
+            for entry in entries.flatten() {
+                let n = entry.file_name().to_string_lossy().to_string();
+                if n.len() >= 10 && !n.starts_with('.') && !n.starts_with('_')
+                    && n.as_bytes()[4] == b'-' && n.as_bytes()[7] == b'-'
+                    && n[..4].chars().all(|c| c.is_ascii_digit())
+                {
+                    dates.push(n[..10].to_string());
+                }
+            }
+        }
+    }
+    dates.sort();
+    let first_post = dates.first().cloned().unwrap_or_else(|| "—".to_string());
+    let latest_post = dates.last().cloned().unwrap_or_else(|| "—".to_string());
+
+    // Find rings
+    let rings_dir = root.join("rings");
+    let mut ring_names: Vec<String> = Vec::new();
+    if rings_dir.is_dir() {
+        if let Ok(entries) = fs::read_dir(&rings_dir) {
+            for entry in entries.flatten() {
+                let n = entry.file_name().to_string_lossy().to_string();
+                if n.ends_with(".ring") {
+                    // Read title from ring file
+                    if let Ok(content) = fs::read_to_string(entry.path()) {
+                        for line in content.lines() {
+                            if let Some(title) = line.strip_prefix("title = ") {
+                                ring_names.push(title.trim().to_string());
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    ring_names.sort();
+
+    // Check for guestbook
+    let has_guestbook = root.join("guestbook.gph").exists();
+    let guestbook_entries = if has_guestbook {
+        fs::read_to_string(root.join("guestbook.gph"))
+            .unwrap_or_default()
+            .matches("\n--- ")
+            .count()
+            + if fs::read_to_string(root.join("guestbook.gph")).unwrap_or_default().starts_with("--- ") { 1 } else { 0 }
+    } else {
+        0
+    };
+
+    // Check for bookmarks
+    let bookmark_count = if root.join("bookmarks.gph").exists() {
+        fs::read_to_string(root.join("bookmarks.gph"))
+            .unwrap_or_default()
+            .lines()
+            .filter(|l| l.starts_with("→ ") || l.starts_with("→ "))
+            .count()
+    } else {
+        0
+    };
+
+    // Check for gallery
+    let gallery_dir = root.join("gallery");
+    let gallery_count = if gallery_dir.is_dir() {
+        fs::read_dir(&gallery_dir)
+            .map(|d| d.flatten().filter(|e| {
+                let n = e.file_name().to_string_lossy().to_string();
+                !n.starts_with('.') && !n.starts_with('_')
+            }).count())
+            .unwrap_or(0)
+    } else {
+        0
+    };
+
+    // Build the colophon
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let mut colophon = format!("# Colophon\n\nGenerated on {}.\n\n", today);
+
+    colophon.push_str(&format!("This burrow belongs to {}.\n", name));
+    if !desc.is_empty() {
+        colophon.push_str(&format!("{}\n", desc));
+    }
+    colophon.push('\n');
+
+    colophon.push_str("---\n\n");
+    colophon.push_str(&format!("  Files:         {}\n", file_count));
+    colophon.push_str(&format!("  Total size:    {}\n", size_str));
+    colophon.push_str(&format!("  Total words:   {}\n", total_words));
+    if post_count > 0 {
+        colophon.push_str(&format!("  Phlog posts:   {}\n", post_count));
+        colophon.push_str(&format!("  First post:    {}\n", first_post));
+        colophon.push_str(&format!("  Latest post:   {}\n", latest_post));
+    }
+    if has_guestbook {
+        colophon.push_str(&format!("  Guestbook:     {} entries\n", guestbook_entries));
+    }
+    if bookmark_count > 0 {
+        colophon.push_str(&format!("  Bookmarks:     {}\n", bookmark_count));
+    }
+    if gallery_count > 0 {
+        colophon.push_str(&format!("  Gallery:       {} pieces\n", gallery_count));
+    }
+
+    if !ring_names.is_empty() {
+        colophon.push_str("\n---\n\n");
+        colophon.push_str("Member of:\n\n");
+        for ring in &ring_names {
+            colophon.push_str(&format!("  {}\n", ring));
+        }
+    }
+
+    colophon.push_str("\n---\n\n");
+    colophon.push_str("Built with Burrow. Served as plaintext.\n");
+    colophon.push_str("No JavaScript. No tracking. No algorithms.\n");
+    colophon.push_str("Just words.\n");
+
+    // Write to colophon.txt
+    let colophon_path = root.join("colophon.txt");
+    fs::write(&colophon_path, &colophon).unwrap();
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Colophon generated for {}", name);
+    println!();
+    println!("  {}", colophon_path.display());
+    println!();
+    println!("  {} files · {} words · {} posts",
+        file_count, total_words, post_count);
+    if !ring_names.is_empty() {
+        println!("  Member of: {}", ring_names.join(", "));
+    }
+    println!();
+    println!("  View at \x1b[36m/{}/colophon\x1b[0m", name);
+    println!();
+}
+
+fn count_words_recursive(dir: &Path) -> usize {
+    let mut total = 0;
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name.starts_with('_') {
+                continue;
+            }
+            let path = entry.path();
+            if path.is_dir() {
+                total += count_words_recursive(&path);
+            } else if name.ends_with(".txt") || name.ends_with(".gph") {
+                if let Ok(content) = fs::read_to_string(&path) {
+                    total += content.split_whitespace().count();
+                }
+            }
+        }
+    }
+    total
 }
 
 fn cmd_edit(burrows_root: &Path, path: &str) {

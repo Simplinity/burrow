@@ -1,0 +1,30 @@
+# Colophon
+
+Generated on 2026-03-23.
+
+This burrow belongs to ~bruno.
+ITAD, web craft, en te veel meningen over typografie
+
+---
+
+  Files:         19
+  Total size:    9.5 KB
+  Total words:   1426
+  Phlog posts:   5
+  First post:    2026-03-10
+  Latest post:   2026-03-17
+  Bookmarks:     1
+  Gallery:       5 pieces
+
+---
+
+Member of:
+
+  Deep Web Craft
+  Indie Web
+
+---
+
+Built with Burrow. Served as plaintext.
+No JavaScript. No tracking. No algorithms.
+Just words.

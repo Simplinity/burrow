@@ -110,6 +110,14 @@ enum Commands {
     },
     /// Register gph:// protocol handler on this system
     Register,
+    /// Import a Markdown file as .gph
+    Import {
+        /// Path to the .md file to import
+        input: String,
+        /// Output path (default: same name with .txt extension in phlog/)
+        #[arg(short, long)]
+        output: Option<String>,
+    },
     /// Lint your burrow for common errors
     Lint {
         /// Optional path to lint (default: entire burrow)
@@ -211,6 +219,7 @@ fn main() {
         Commands::Push { remote } => cmd_push(&burrows_root, &remote),
         Commands::Pull { remote } => cmd_pull(&burrows_root, &remote),
         Commands::Colophon => cmd_colophon(&burrows_root),
+        Commands::Import { input, output } => cmd_import(&burrows_root, &input, output.as_deref()),
         Commands::Lint { path } => cmd_lint(&burrows_root, path.as_deref()),
         Commands::ReadLater { url, desc } => cmd_read_later(&burrows_root, &url, desc.as_deref()),
         Commands::ReadingList => cmd_reading_list(&burrows_root),
@@ -2168,4 +2177,202 @@ fn collect_lint_files(path: &Path) -> Vec<PathBuf> {
     }
     files.sort();
     files
+}
+
+// ── Import (Markdown → .gph) ────────────────────────────────────
+
+fn cmd_import(burrows_root: &Path, input: &str, output: Option<&str>) {
+    let input_path = Path::new(input);
+    if !input_path.exists() {
+        println!("  \x1b[31m✗\x1b[0m File not found: {}", input);
+        return;
+    }
+
+    let content = match fs::read_to_string(input_path) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("  \x1b[31m✗\x1b[0m Could not read file: {}", e);
+            return;
+        }
+    };
+
+    let mut warnings: Vec<String> = Vec::new();
+    let converted = markdown_to_gph(&content, &mut warnings);
+
+    // Determine output path
+    let active = find_active_burrow(burrows_root);
+    let out_path = if let Some(o) = output {
+        let burrow_dir = match &active {
+            Some(name) => burrows_root.join(name),
+            None => PathBuf::from("."),
+        };
+        burrow_dir.join(o)
+    } else {
+        let stem = input_path.file_stem().unwrap_or_default().to_string_lossy();
+        let burrow_dir = match &active {
+            Some(name) => burrows_root.join(name),
+            None => PathBuf::from("."),
+        };
+        let phlog_dir = burrow_dir.join("phlog");
+        if phlog_dir.is_dir() {
+            let date = Local::now().format("%Y-%m-%d").to_string();
+            phlog_dir.join(format!("{}-{}.txt", date, stem))
+        } else {
+            burrow_dir.join(format!("{}.txt", stem))
+        }
+    };
+
+    // Write
+    fs::write(&out_path, &converted).unwrap_or_else(|e| {
+        println!("  \x1b[31m✗\x1b[0m Could not write: {}", e);
+    });
+
+    let relative = out_path.strip_prefix(burrows_root).unwrap_or(&out_path);
+    println!("\n  \x1b[32m✓\x1b[0m Imported {} → {}", input, relative.display());
+
+    if !warnings.is_empty() {
+        println!("\n  \x1b[33mStripped during conversion:\x1b[0m");
+        for w in &warnings {
+            println!("    \x1b[33m⚠\x1b[0m  {}", w);
+        }
+    }
+
+    let word_count = converted.split_whitespace().count();
+    println!("\n  {} words · .gph format · ready to edit\n", word_count);
+}
+
+fn markdown_to_gph(md: &str, warnings: &mut Vec<String>) -> String {
+    let mut gph = String::new();
+    let mut in_code_fence = false;
+    let mut bold_count = 0;
+    let mut italic_count = 0;
+    let mut image_count = 0;
+
+    for line in md.lines() {
+        // Code fences (``` → two-space indent)
+        if line.trim_start().starts_with("```") {
+            in_code_fence = !in_code_fence;
+            continue;
+        }
+
+        if in_code_fence {
+            // Inside code fence → indent with two spaces
+            gph.push_str("  ");
+            gph.push_str(line);
+            gph.push('\n');
+            continue;
+        }
+
+        let mut converted = line.to_string();
+
+        // Headings: ## and ### → # (gph only has one level)
+        if converted.starts_with("### ") {
+            converted = format!("# {}", &converted[4..]);
+        } else if converted.starts_with("## ") {
+            converted = format!("# {}", &converted[3..]);
+        }
+        // # stays as #
+
+        // Links: [text](url) → → url or /path   text
+        while let Some(start) = converted.find('[') {
+            if let Some(mid) = converted[start..].find("](") {
+                let mid = start + mid;
+                if let Some(end) = converted[mid..].find(')') {
+                    let end = mid + end;
+                    let text = &converted[start + 1..mid].to_string();
+                    let url = &converted[mid + 2..end].to_string();
+
+                    let replacement = if url.starts_with("http") {
+                        format!("→ {}", url)
+                    } else if url.starts_with('/') {
+                        format!("{}   {}", url, text)
+                    } else {
+                        text.clone()
+                    };
+
+                    converted = format!("{}{}{}", &converted[..start], replacement, &converted[end + 1..]);
+                    continue;
+                }
+            }
+            break;
+        }
+
+        // Images: ![alt](url) → strip with warning
+        if converted.contains("![") {
+            image_count += 1;
+            // Remove image markdown, keep alt text
+            while let Some(start) = converted.find("![") {
+                if let Some(mid) = converted[start..].find("](") {
+                    let mid = start + mid;
+                    if let Some(end) = converted[mid..].find(')') {
+                        let end = mid + end;
+                        let alt = &converted[start + 2..mid];
+                        converted = format!("{}{}{}", &converted[..start], alt, &converted[end + 1..]);
+                        continue;
+                    }
+                }
+                break;
+            }
+        }
+
+        // Bold: **text** or __text__ → strip markers
+        while converted.contains("**") {
+            let pos = converted.find("**").unwrap();
+            converted = format!("{}{}", &converted[..pos], &converted[pos + 2..]);
+            bold_count += 1;
+        }
+        while converted.contains("__") {
+            let pos = converted.find("__").unwrap();
+            converted = format!("{}{}", &converted[..pos], &converted[pos + 2..]);
+            bold_count += 1;
+        }
+
+        // Italic: *text* or _text_ (careful not to match ** or __)
+        // Simple approach: single * or _ surrounded by non-* non-_
+        let mut result = String::new();
+        let chars: Vec<char> = converted.chars().collect();
+        let mut i = 0;
+        while i < chars.len() {
+            if (chars[i] == '*' || chars[i] == '_')
+                && (i == 0 || chars[i - 1] != chars[i])
+                && (i + 1 >= chars.len() || chars[i + 1] != chars[i])
+            {
+                italic_count += 1;
+                i += 1;
+                continue;
+            }
+            result.push(chars[i]);
+            i += 1;
+        }
+        converted = result;
+
+        // Horizontal rules: --- or *** or ___ → ---
+        let trimmed = converted.trim();
+        if (trimmed == "---" || trimmed == "***" || trimmed == "___")
+            && trimmed.len() >= 3
+        {
+            converted = "---".to_string();
+        }
+
+        // Indented code (4 spaces) → 2 spaces
+        if converted.starts_with("    ") && !converted.trim().is_empty() {
+            converted = format!("  {}", converted.trim_start());
+        }
+
+        gph.push_str(&converted);
+        gph.push('\n');
+    }
+
+    // Collect warnings
+    if bold_count > 0 {
+        warnings.push(format!("bold markers (**) stripped — {} instances", bold_count / 2));
+    }
+    if italic_count > 0 {
+        warnings.push(format!("italic markers (*/_) stripped — {} instances", italic_count / 2));
+    }
+    if image_count > 0 {
+        warnings.push(format!("images stripped (alt text kept) — {} instances", image_count));
+    }
+
+    gph
 }

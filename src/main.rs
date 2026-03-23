@@ -2801,7 +2801,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         body.push_str(&format!("# {} — burrows\n\n", domain));
         body.push_str("?  Search   /search\n\n");
         for b in &burrows {
-            body.push_str(&format!("/  {}   {}\n", b.name, b.description));
+            body.push_str(&format!("/  {}   {}   {}\n", b.path, b.name, b.description));
         }
         body.push_str(&format!("\n→  /discover   Discover\n"));
         body.push_str(&format!("→  /firehose   Firehose\n"));
@@ -2869,7 +2869,7 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         // All burrows
         body.push_str("\n## All burrows\n\n");
         for b in &burrows {
-            body.push_str(&format!("/  {}   {}\n", b.name, b.description));
+            body.push_str(&format!("/  {}   {}   {}\n", b.path, b.name, b.description));
         }
         return body;
     }
@@ -3034,7 +3034,8 @@ async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state
         body.push('\n');
         for e in &entries {
             let symbol = if e.entry_type == EntryType::Directory { "/" } else { "¶" };
-            body.push_str(&format!("{}  {}   {}   {}\n", symbol, e.name, e.description, e.meta));
+            // Format: TYPE  PATH   DISPLAY_NAME   DESCRIPTION   META
+            body.push_str(&format!("{}  {}   {}   {}   {}\n", symbol, e.path, e.name, e.description, e.meta));
         }
 
         // Neighbors on burrow root

@@ -527,7 +527,7 @@ What remains after stripping all this away? A reading and writing tool. That's i
 
 #### The guestbook
 
-An homage to the early web. Any burrow can have a `guestbook.gph` — a page where visitors can leave a short message (one line, max 280 characters). Messages are chronological, newest-last.
+An homage to the early web. Any burrow can have a `guestbook.gph` — a page where visitors can leave a short message (max 500 characters, multi-line). Messages are chronological, newest-last.
 
 ```
 /~bruno/guestbook.gph
@@ -541,19 +541,19 @@ Bruno's guestbook · 12 entries
   [Sign the guestbook]
 ```
 
-Guestbooks are the only interactive element in Burrow beyond search. They're intentionally limited: one line, no formatting, no editing, no deleting (except by the burrow owner). They're the digital equivalent of signing a visitor's book at a museum — brief, personal, and surprisingly meaningful.
+Guestbooks are the only interactive element in Burrow beyond search. They're intentionally limited: 500 characters, no formatting, no editing, no deleting (except by the burrow owner), rate-limited to one post per 30 seconds per IP. They're the digital equivalent of signing a visitor's book at a museum — brief, personal, and surprisingly meaningful.
 
 #### The ASCII art gallery
 
-Every Burrow server has a public art gallery at `gph://server/gallery/`. It's a community-curated collection of ASCII and ANSI art. Submissions are moderated by the server operator.
+Every burrow can have its own ASCII art gallery. Create a `gallery/` directory in your burrow, add `.txt` files with your art, and the server renders them in a grid preview — the first 10 lines of each piece in monospace cards. Click to view full-size in a dedicated art viewer.
 
 This seems whimsical, but it serves a serious purpose: it establishes that Burrow values *craft* — the careful arrangement of characters to create beauty within constraints. That philosophy extends to everything on the platform. A well-written phlog post is a form of craft. A thoughtfully organized burrow is a form of craft. The constraint of plaintext isn't a limitation — it's a creative medium.
 
 #### Yearly archival and `timecapsule.txt`
 
-On the anniversary of your burrow's creation, Burrow generates a `timecapsule.txt` — a snapshot of your burrow's state one year ago. What you were writing about. What you were bookmarking. The size of your little corner of gopherspace.
+`burrow timecapsule` generates a `timecapsule-YYYY.txt` — a snapshot of your burrow's state for a given year. How many posts you wrote, total words, the posts themselves, your bookmarks, your rings. It's a public record of your year in plaintext.
 
-It's private (only visible to you) and it's automatic. It's a mirror held up once a year: who were you online twelve months ago? It's the kind of feature that makes people stay for years.
+Run it when you want. The CLI reads the filesystem and generates a `.txt` file you can publish, edit, or delete. It's a mirror held up at your discretion: who were you online this year? It's the kind of feature that makes people stay for years.
 
 #### Reading challenges
 

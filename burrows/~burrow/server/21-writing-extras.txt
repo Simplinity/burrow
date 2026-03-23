@@ -1,0 +1,106 @@
+# Writing Extras
+
+Three small features that make writing in Burrow a little more pleasant. None of them are required. All of them are one-line additions to your workflow.
+
+---
+
+## @today — inline date stamps
+
+Write @today anywhere in your text and the server renders it as today's date:
+
+  Last updated: @today
+
+Becomes:
+
+  Last updated: 2026-03-23
+
+The file itself still contains the literal text @today. Open it in vim, cat, or any text editor — you see @today. The expansion only happens when the server renders the page. One magic word. No template engine. No build step.
+
+Handy for "last updated" lines, colophon timestamps, or anywhere you want a date without remembering what day it is.
+
+---
+
+## Series — automatic part navigation
+
+Name your files with a numbered pattern:
+
+  phlog/
+    why-plaintext-part-01.txt
+    why-plaintext-part-02.txt
+    why-plaintext-part-03.txt
+
+The server detects the series automatically. Each page shows "Part X of Y" in the meta line and a navigation bar at the bottom:
+
+  ← Part 1    Part 2 of 3    Part 3 →
+
+Both - and _ separators work (part-01 or chapter_3). The server scans the directory for siblings with the same prefix. Requires at least 2 parts to activate. No config. No metadata. The filename is the instruction.
+
+---
+
+## ?slow=1 — slow reading mode
+
+Add ?slow=1 to any text page URL:
+
+  /~alice/phlog/my-post?slow=1
+
+The page renders with 21px font (instead of 17px), narrower column (580px instead of 680px), and more whitespace between paragraphs. The typographic equivalent of a comfortable chair.
+
+No cookie. No setting. No preference to remember. Just a URL parameter. Share the link with ?slow=1 and the receiver gets the same view. Remove the parameter and you're back to normal.
+
+---
+
+## Seasonal accent colors
+
+If you don't set a custom accent color in your .burrow config, the default follows the season:
+
+  Spring (March–May):      fresh green
+  Summer (June–August):    warm gold
+  Autumn (September–Nov):  sienna brown
+  Winter (December–Feb):   steel blue
+
+Four colors per year. Both light and dark mode get season-appropriate tints. The server checks the date. No config.
+
+Set accent = #hexcolor in your .burrow and the seasons stop mattering — your choice overrides the calendar. But if you leave it blank, your burrow breathes with the year.
+
+---
+
+## burrow colophon
+
+Run burrow colophon and it generates a colophon.txt in your burrow root:
+
+  # Colophon
+
+  Generated on 2026-03-23.
+
+  This burrow belongs to ~bruno.
+  ITAD, web craft, en te veel meningen over typografie
+
+    Files:         19
+    Total words:   1426
+    Phlog posts:   5
+    First post:    2026-03-10
+    Latest post:   2026-03-17
+    Gallery:       5 pieces
+
+  Member of:
+    Deep Web Craft
+    Indie Web
+
+  Built with Burrow. Served as plaintext.
+  No JavaScript. No tracking. No algorithms.
+  Just words.
+
+The output is a .txt file. Edit it, delete it, or publish it as-is. Your burrow describes itself.
+
+---
+
+## burrow read-later — private reading list
+
+  burrow read-later /~maya/phlog/on-digital-minimalism -d "Must read"
+  burrow read-later https://100r.co -d "Hundred Rabbits"
+  burrow reading-list
+
+Saves links to _reading-list.gph — a private file (starts with _, invisible to HTTP). Same .gph format as bookmarks, but only you can see it. Your intentions, for yourself. No algorithm. No platform. Just a file.
+
+/~burrow/server/20-custom-domains   ← Custom Domains
+/~burrow/server/01-getting-started   Back to the beginning →

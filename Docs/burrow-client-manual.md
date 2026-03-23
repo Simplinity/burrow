@@ -173,7 +173,28 @@ burrow pull user@phlogosphere.net:/srv/burrow/burrows/~bruno/
 burrow timecapsule 2026
 ```
 
-`export` creates a tar.gz backup. `push`/`pull` use rsync over SSH — your burrow is files, you copy them. `timecapsule` produces a yearly stats summary with post counts, word totals, and a chronological index.
+`export` creates a tar.gz backup. `push`/`pull` use rsync over SSH — your burrow is files, you copy them. `timecapsule` produces a yearly stats summary with post counts, word totals, and a chronological index. `colophon` generates a publishable metadata page.
+
+### Colophon
+
+```bash
+burrow colophon
+```
+
+Generates `colophon.txt` — a publishable self-description of your burrow: total files, words, posts, earliest and latest post dates, guestbook entries, bookmarks, gallery pieces, ring memberships. Your burrow describes itself, in plaintext. Edit it, delete it, or publish it as-is.
+
+### Reading List (Private)
+
+```bash
+# Save something to read later
+burrow read-later /~maya/phlog/on-digital-minimalism -d "Maya's piece"
+burrow read-later https://100r.co -d "Hundred Rabbits"
+
+# Show your reading list
+burrow reading-list
+```
+
+Your reading list lives in `_reading-list.gph` — private by convention (the `_` prefix makes it invisible to HTTP). Same format as public bookmarks, but only you can see it. No algorithm. No "saved for later" platform. Just a file.
 
 ### Protocol Handler
 

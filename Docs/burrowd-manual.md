@@ -107,7 +107,36 @@ External links. The arrow is not optional. Commitment is important.
 
 /~alice/about   Internal links
 Three spaces separate the path from the description.
+
+@today
+Inline date stamp. Rendered as today's date (YYYY-MM-DD).
+The file stays readable in any editor — you just see @today.
 ```
+
+### Inline Date Stamps
+
+Write `@today` anywhere in a `.gph` or `.txt` file and the server renders it as the current date. Handy for "last updated" lines without manual editing. One magic word, no template engine.
+
+### Series Navigation
+
+Name files with a numbered pattern — `part-01.txt`, `part-02.txt`, `chapter_3.txt` — and the server detects the series automatically. Each page shows "Part X of Y" in the meta line and a navigation bar at the bottom:
+
+```
+← Part 1    Part 2 of 3    Part 3 →
+```
+
+Filesystem convention, not metadata. The filename is the instruction. No config needed. Both `-` and `_` separators work. Requires at least 2 parts to activate.
+
+### Slow Reading Mode
+
+Add `?slow=1` to any text page URL for a more comfortable reading experience:
+
+```
+/~alice/phlog/my-post           ← normal (17px, 680px)
+/~alice/phlog/my-post?slow=1    ← slow mode (21px, 580px, extra whitespace)
+```
+
+No cookie. No setting. No state. Just a URL parameter that injects CSS. The typographic equivalent of a comfortable chair. Share the `?slow=1` link and the receiver gets the same view.
 
 ### Hidden Files & Drafts
 
@@ -180,7 +209,7 @@ pin = about.txt
 | Key | Description |
 |-----|-------------|
 | `description` | One-line description shown in directory listings and the sidebar. Keep it short. Think "dating profile bio," not "LinkedIn summary." |
-| `accent` | Custom accent color as a hex value (`#abc` or `#aabbcc`). Changes links, icons, buttons, and that one scroll bar. Your burrow, your vibe. Defaults to teal if absent, because we think teal is a good color and we're not sorry. |
+| `accent` | Custom accent color as a hex value (`#abc` or `#aabbcc`). Changes links, icons, buttons, and the progress bar. Your burrow, your vibe. If absent, the color follows the season: spring green, summer gold, autumn brown, winter blue. Four colors per year. The server knows what month it is. |
 | `title` | Overrides the directory name in listings and page headings. For when `~bruno` doesn't capture the full scope of your existential ambitions. |
 | `sort` | Directory sort order: `name-asc` (default), `name-desc`, `modified-asc`, `modified-desc`. The phlog/ directory probably wants `modified-desc`. The gallery/ probably doesn't care. |
 | `pin` | Pin a file to the top of the directory listing, regardless of sort order. The equivalent of taping a note to the fridge. Only one pin per directory — we're minimalists, not Pinterest. |
@@ -592,7 +621,17 @@ burrow export [output.tar.gz]     Backup your burrow as tar.gz
 burrow push <remote>              Push to remote server via rsync/SSH
 burrow pull <remote>              Pull from remote server via rsync/SSH
 burrow timecapsule [year]         Generate yearly stats summary
+burrow colophon                   Generate colophon.txt (stats, rings, metadata)
 ```
+
+### Reading List (Private)
+
+```
+burrow read-later <url> -d "desc" Save a link to read later (private)
+burrow reading-list               Show your reading list
+```
+
+Your reading list lives in `_reading-list.gph` — prefixed with `_`, so it's invisible to HTTP. Same `.gph` format as bookmarks, but private. Your intentions, for yourself. Edit it with vim, delete it with rm. That's the entire feature.
 
 ### Protocol & Server
 

@@ -24,13 +24,13 @@ The entire UI is built from five values:
   text:       almost-black text
   muted:      secondary text, borders
   faint:      subtle backgrounds
-  accent:     teal — links, one interactive element
+  accent:     seasonal — spring green, summer gold, autumn brown, winter blue
 
-Dark mode inverts surface and text. The accent stays. That's the whole theme engine.
+Dark mode inverts surface and text. The accent follows the season. That's the whole theme engine.
 
-Why no brand color? Because brand colors are marketing. They exist to make you feel something about a company. Burrow isn't trying to make you feel anything about Burrow. It's trying to get out of the way so you feel something about the content.
+Why seasonal instead of a fixed brand color? Because brand colors are marketing. They exist to make you feel something about a company. Burrow isn't trying to make you feel anything about Burrow. It's trying to get out of the way so you feel something about the content. The seasons change. Your burrow changes with them. Gently.
 
-Burrow owners can set a custom accent color in their .burrow config. Your burrow, your tint. Everything else stays neutral.
+Burrow owners can set a custom accent color in their .burrow config. Your burrow, your tint. Everything else stays neutral. Set an accent and the seasons stop mattering — your choice overrides the calendar.
 
 ---
 

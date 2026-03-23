@@ -60,4 +60,4 @@ The startup banner confirms your aliases:
 - You want to feel important — buy a third domain instead, it's cheaper than therapy
 
 /~burrow/server/19-operations   ← Operations & Monitoring
-/~burrow/server/01-getting-started   Back to the beginning →
+/~burrow/server/21-writing-extras   Next: Writing Extras →

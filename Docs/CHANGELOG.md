@@ -7,6 +7,49 @@ This project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0] — 2026-03-23
+
+The "polish and soul" release. Zero JavaScript. Seasonal colors. Your words deserve better defaults.
+
+### Added
+
+#### Server (`burrowd`)
+- **Zero JavaScript** — scroll progress bar replaced with CSS `animation-timeline: scroll()`. The probation ended. The handler was replaced by a stylesheet.
+- **`@today` date stamps** — write `@today` in any `.gph`/`.txt` file, rendered as current date (YYYY-MM-DD)
+- **Series navigation** — files named `part-01.txt`, `part-02.txt` etc. get automatic "Part X of Y" with ← → navigation
+- **Slow reading mode** — `?slow=1` URL parameter for 21px/580px comfortable reading view
+- **Seasonal accent colors** — spring green, summer gold, autumn brown, winter blue. Four colors per year. No config.
+- **Custom domains** — `aliases` config key, Host header resolution for multi-domain serving
+- **Production hosting guide** — port 80, setcap, HTTPS with certbot, systemd, Docker
+
+#### CLI (`burrow`)
+- **`burrow colophon`** — generates publishable colophon.txt (files, words, posts, dates, rings, gallery)
+- **`burrow read-later`** — save links to private `_reading-list.gph` (invisible to HTTP)
+- **`burrow reading-list`** — show your private reading list
+
+#### Documentation
+- Complete audit: 18 undocumented features added to server manual
+- Architecture.md fully rewritten (routes, state, dependencies, security model)
+- 4 new `~burrow/server/` articles (binary files, operations, custom domains, writing extras)
+- All CLI commands documented in both server and client manuals
+- `ideas-for-burrow.md` — 50 feature ideas with manifesto rationale
+
+### Changed
+- Default accent color: seasonal instead of static teal
+- All `std::fs` in server → `tokio::fs` (async, non-blocking)
+- Server binds to `0.0.0.0` (all interfaces) with LAN IP in startup banner
+- Tests: 36 → 38 (added `@today` expansion + series number extraction)
+
+### Fixed
+- Bind address documentation (was `127.0.0.1`, actual is `0.0.0.0`)
+- LIMITS table (was 2+2 config options, actual is 6+5)
+- Directory cap 256 removed from docs (not enforced in code)
+- Merge conflict resolution in main.rs from upstream branch
+- Pin config: was documented as plural, actual is single file
+- Federation ping format: was form-encoded in docs, actual is JSON
+
+---
+
 ## [0.2.0] — 2026-03-23
 
 The "we built the whole thing" release. 56 features. Two days. One hole.
@@ -180,15 +223,6 @@ First public release. The hole is open.
 
 ---
 
-## Backlog
-
-| Feature | Status |
-|---------|--------|
-| Custom domain support (paid tier) | Planned |
-| Directory sort/pin in `.burrow` config | Partial |
-
----
-
 ## Project info
 
 | | |
@@ -197,6 +231,8 @@ First public release. The hole is open.
 | **Framework** | Axum 0.8, Tokio |
 | **CLI** | Clap 4 (derive) |
 | **Binaries** | `burrowd` (server), `burrow` (CLI) |
+| **Protocols** | HTTP, HTTPS (rustls), Gemini |
+| **JavaScript** | 0 |
 | **License** | TBD |
 | **Repository** | [github.com/Simplinity/burrow](https://github.com/Simplinity/burrow) |
-| **Tests** | 36+ unit tests |
+| **Tests** | 38 unit tests |

@@ -14,7 +14,7 @@ Every directory can contain a .burrow file with up to five keys:
 
 description: shown next to the directory name in listings. Your elevator pitch in one line.
 
-accent: a hex color (#abc or #aabbcc) that overrides the default teal. Your burrow, your color. Validated server-side — invalid hex values are silently ignored, because we don't trust your CSS instincts. (Just kidding. Mostly.)
+accent: a hex color (#abc or #aabbcc) that overrides the seasonal default. Without it, your burrow follows the season: spring green, summer gold, autumn brown, winter blue. Set your own and the seasons stop mattering. Validated server-side — invalid hex values are silently ignored, because we don't trust your CSS instincts. (Just kidding. Mostly.)
 
 title: overrides the directory name in headings and listings. Because phlog/ deserves better, and gallery/ deserves a name.
 

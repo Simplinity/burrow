@@ -4,7 +4,55 @@
 
 Every idea below follows the sacred constraints: no notifications, no likes, no algorithms, text-first, filesystem-as-database, human curation over automation, privacy by default, ownership by design. If an idea breaks a constraint, it doesn't belong here.
 
+
+
+DONE:
+
+### Inline date stamp (`@today`)
+
+Write `@today` in your `.gph` and the server renders it as the current date. Handy for "last updated" without manual editing. One magic word, no template engine.
+
+**Why it fits:** One expansion rule. Zero config. The file stays readable in a text editor — you just see `@today`.
+
+### Series numbering — automatic part navigation
+
+Name files `part-01.txt`, `part-02.txt` and the server renders "Part 1 of 5" with prev/next navigation. Longer essays without a single gigantic file.
+
+**Why it fits:** Filesystem convention, not metadata. The filename is the instruction. No config needed.
+
+### Colophon generation — automatic `colophon.txt`
+
+`burrow colophon` generates metadata about your burrow: creation date, total words written, tools used, rings you're a member of. An automatic "about this site" page.
+
+**Why it fits:** Self-documentation. The output is a .txt file you can edit or delete.
+
+### `reading-list.gph` — personal reading list
+
+A special file where you put links you want to read later. CLI: `burrow read-later /~maya/phlog/post`. No algorithm, no platform "saved for later" — just a file you manage yourself.
+
+**Why it fits:** It's a file. You own it. You edit it with vim. That's the entire feature.
+
+### "Slow reading" mode
+
+A URL parameter `?slow=1` that renders the page with extra-large margins, bigger text (21px), and more whitespace. For when you truly want to read, not scan.
+
+**Why it fits:** The typographic equivalent of a comfortable chair. Opt-in. No setting to remember. Just a URL.
+
+### Seasonal theme — automatic accent color per season
+
+If you don't set an accent, the color follows the season subtly: spring green, summer gold, autumn brown, winter blue. Four colors per year. The server checks the date. No config.
+
+**Why it fits:** Zero config. Gentle. Ephemeral. The server acknowledges the passage of time.
+
+
+
 ---
+
+
+
+
+
+
 
 ## I. Writing & Publishing
 
@@ -13,25 +61,10 @@ Footnotes as a separate block at the bottom of the page, with back-links. Fits `
 
 **Why it fits:** Text-first. No inline formatting. The constraint is the feature.
 
-### 2. Inline date stamp (`@today`)
-Write `@today` in your `.gph` and the server renders it as the current date. Handy for "last updated" without manual editing. One magic word, no template engine.
-
-**Why it fits:** One expansion rule. Zero config. The file stays readable in a text editor — you just see `@today`.
-
 ### 3. `burrow dictate` — speech-to-text publishing
 Pipe audio to whisper.cpp, output to `.txt`. Publishing without a keyboard. Fits "deliberate act of publishing" because you must consciously run the command.
 
 **Why it fits:** CLI-first. Intentional. The output is a plain text file. No cloud transcription service.
-
-### 4. Series numbering — automatic part navigation
-Name files `part-01.txt`, `part-02.txt` and the server renders "Part 1 of 5" with prev/next navigation. Longer essays without a single gigantic file.
-
-**Why it fits:** Filesystem convention, not metadata. The filename is the instruction. No config needed.
-
-### 5. Colophon generation — automatic `colophon.txt`
-`burrow colophon` generates metadata about your burrow: creation date, total words written, tools used, rings you're a member of. An automatic "about this site" page.
-
-**Why it fits:** Self-documentation. The output is a .txt file you can edit or delete.
 
 ### 6. Writing streaks — private, local only
 The CLI shows how many consecutive days you've published something. Only visible to you. No badge, no public number. Just: "you've written 12 days in a row." Quiet motivation.
@@ -52,30 +85,17 @@ The client remembers where you were in a long document. Reopen it → you're whe
 
 **Why it fits:** Local state. No tracking. No server-side session. The client remembers, the server doesn't know.
 
-### 9. `reading-list.gph` — personal reading list
-A special file where you put links you want to read later. CLI: `burrow read-later /~maya/phlog/post`. No algorithm, no platform "saved for later" — just a file you manage yourself.
-
-**Why it fits:** It's a file. You own it. You edit it with vim. That's the entire feature.
-
 ### 10. Breadcrumb trail as navigation memory
 The server remembers your last 5 visited pages in a cookie-less session and shows them as "recent trail" at the bottom. No tracking — pure navigation convenience, expires after 10 minutes.
 
 **Why it fits:** Stateless. No cookies. No user tracking. Ephemeral by design.
-
-### 11. Keyboard navigation in directory listings
-`j`/`k` to navigate items, `Enter` to open, `Esc` to go back. Would require a small JavaScript snippet — the first one in Burrow. Vim users will weep with joy. The manifesto will weep with something else.
-
-**Why it fits:** Minimal JavaScript for a genuine UX improvement. Navigation, not decoration. The form already proves we accept pragmatism when it serves the user.
 
 ### 12. Length indicator in directory listings
 Next to each file, a subtle bar indicating length (short/medium/long). You know before clicking how much reading awaits. Not exact word counts — a feeling.
 
 **Why it fits:** Respects attention. Informs without overwhelming. Three levels, not a number.
 
-### 13. "Slow reading" mode
-A URL parameter `?slow=1` that renders the page with extra-large margins, bigger text (21px), and more whitespace. For when you truly want to read, not scan.
 
-**Why it fits:** The typographic equivalent of a comfortable chair. Opt-in. No setting to remember. Just a URL.
 
 ---
 
@@ -95,11 +115,6 @@ A filename starting with `guest-~maya-` renders with "Guest post by ~maya" and a
 The current ping sends an HTTP POST. A "quiet mention" is a link to someone without a ping — for when you reference someone but don't want to nudge them. Syntax: `//~user/path` (double slash = silent link).
 
 **Why it fits:** Respects attention. Not every reference is a conversation starter. Sometimes you just want to cite.
-
-### 17. Seasonal theme — automatic accent color per season
-If you don't set an accent, the color follows the season subtly: spring green, summer gold, autumn brown, winter blue. Four colors per year. The server checks the date. No config.
-
-**Why it fits:** Zero config. Gentle. Ephemeral. The server acknowledges the passage of time.
 
 ### 18. Burrow anniversary
 On the anniversary of your first post, the server shows a subtle "Est. 2026" badge next to your burrow name in directory listings. No confetti, no fanfare — just a quiet acknowledgment of duration.

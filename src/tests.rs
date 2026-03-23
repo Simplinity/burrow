@@ -194,8 +194,9 @@ fn text_page_shows_reading_time() {
 #[test]
 fn text_page_has_progress_bar() {
     let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN, None);
-    assert!(html.contains(r#"id="prog""#));
-    assert!(html.contains("scroll"));
+    assert!(html.contains("progress"));
+    assert!(html.contains("animation-timeline:scroll()"));
+    assert!(!html.contains("<script>"));
 }
 
 #[test]

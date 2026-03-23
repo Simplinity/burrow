@@ -45,7 +45,8 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 .reading pre{background:var(--faint);padding:16px;border-radius:4px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.5;margin:1.2em 0}
 .reading a{color:var(--accent)}
 .reading hr{border:none;border-top:1px solid var(--faint);margin:2em 0}
-.progress{position:fixed;top:0;left:0;height:2px;background:var(--accent);transition:width 0.1s;z-index:100;opacity:0.6}
+.progress{position:fixed;top:0;left:0;width:100%;height:2px;background:var(--accent);z-index:100;opacity:0.6;transform-origin:left;transform:scaleX(0);animation:grow-progress linear;animation-timeline:scroll()}
+@keyframes grow-progress{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 
 .statusbar{display:flex;justify-content:space-between;padding:6px 24px;border-top:1px solid var(--faint);font-size:11px;color:var(--muted)}
 .banner{text-align:center;padding:12px;font-size:12px;color:var(--muted);border-top:1px solid var(--faint)}
@@ -201,7 +202,7 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
     let rendered = render_gph(content);
 
     let mut html = head_with_accent(filename, &format!("/{}", path), domain, accent);
-    html.push_str(&format!(r#"<div class="progress" id="prog"></div>
+    html.push_str(&format!(r#"<div class="progress"></div>
 <div style="max-width:680px;margin:0 auto;padding:0 24px;">
 <div class="crumbs" style="margin-top:24px;">{crumbs}</div>
 <div class="reading">
@@ -256,14 +257,7 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
 
     html.push_str("</div>");
     html.push_str(&footer(domain));
-    html.replace("</body></html>", r#"<script>
-window.addEventListener('scroll',()=>{
-  const h=document.documentElement;
-  const pct=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100;
-  document.getElementById('prog').style.width=pct+'%';
-});
-</script>
-</body></html>"#)
+    html
 }
 
 pub fn not_found_page(path: &str, domain: &str) -> String {

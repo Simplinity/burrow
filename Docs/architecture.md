@@ -414,8 +414,8 @@ burrow v0.2.0
 2. **Two binaries, one library.** Server and CLI share config but nothing else.
    They can evolve independently.
 
-3. **No JavaScript.** One scroll handler. One HTML form. The server renders
-   complete pages. The browser's job is to display them.
+3. **No JavaScript.** Zero. The scroll progress bar is pure CSS (`animation-timeline: scroll()`).
+   One HTML form. The server renders complete pages. The browser's job is to display them.
 
 4. **Inline CSS.** One `const CSS` string, no build step, no PostCSS, no Tailwind.
    Per-burrow accent color override via CSS custom properties.

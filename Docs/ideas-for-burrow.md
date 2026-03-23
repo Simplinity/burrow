@@ -63,9 +63,9 @@ The server remembers your last 5 visited pages in a cookie-less session and show
 **Why it fits:** Stateless. No cookies. No user tracking. Ephemeral by design.
 
 ### 11. Keyboard navigation in directory listings
-`j`/`k` to navigate items, `Enter` to open, `Esc` to go back. Works in the browser via that one JavaScript handler already on probation. Vim users will weep with joy.
+`j`/`k` to navigate items, `Enter` to open, `Esc` to go back. Would require a small JavaScript snippet — the first one in Burrow. Vim users will weep with joy. The manifesto will weep with something else.
 
-**Why it fits:** No additional JavaScript. Same scroll handler, extended with keydown events. The probation continues.
+**Why it fits:** Minimal JavaScript for a genuine UX improvement. Navigation, not decoration. The form already proves we accept pragmatism when it serves the user.
 
 ### 12. Length indicator in directory listings
 Next to each file, a subtle bar indicating length (short/medium/long). You know before clicking how much reading awaits. Not exact word counts — a feeling.
@@ -240,7 +240,7 @@ Serve files from a `.well-known/` directory for standard internet protocols: `se
 ### 42. Content-Security-Policy header
 Strict CSP: no inline scripts, no external resources, no iframes. The browser refuses everything except what the server itself serves. XSS becomes architecturally impossible, not just escaped.
 
-**Why it fits:** Defense in depth. One header. The server already serves no JavaScript (except the probationary one). CSP makes it a contract.
+**Why it fits:** Defense in depth. One header. The server serves zero JavaScript. CSP makes that a contract, not just a promise.
 
 ### 43. Gzip/Brotli compression
 Text compresses spectacularly well. A 64KB `.txt` becomes ~8KB over the wire. The server compresses automatically if the client accepts it.

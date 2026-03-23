@@ -28,7 +28,7 @@ That's it. No flags. No `--verbose --enable-kubernetes --sync-to-cloud --blockch
 
 **burrowd** serves plaintext content from a `burrows/` directory over HTTP with a reading-optimized UI. Think of it as a very opinionated web server that looked at the modern internet, sighed heavily, and decided to do less.
 
-It renders `.txt` files with a clean typographic layout (Literata for prose, JetBrains Mono for code), provides directory listings with the quiet dignity of an FTP server, and steadfastly refuses to execute a single line of JavaScript beyond a scroll progress bar. (We had a heated internal debate about the progress bar. It stayed. Barely.)
+It renders `.txt` files with a clean typographic layout (Literata for prose, JetBrains Mono for code), provides directory listings with the quiet dignity of an FTP server, and serves zero JavaScript. Not "minimal JavaScript." Not "just one tiny script." Zero. The scroll progress bar is pure CSS. The guestbook form is plain HTML. We checked.
 
 Every burrow lives in a `~username/` directory, because tildes were the original social network and we will die on this hill.
 
@@ -438,7 +438,7 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 | Guestbook rate | 1 post / 30 sec / IP | Spammers hate this one weird trick |
 | Federation pings | 100 stored | We remember mentions. Not all of them. |
 | Firehose page size | 20 posts | Pagination. It's what adults do. |
-| JavaScript | 1 scroll handler | We are not proud. We are not ashamed. |
+| JavaScript | 0 | CSS handles the progress bar. We are proud. Very proud. |
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
 | Config options | 6 (server) + 5 (burrow) | We started with 2. Reality happened. |
@@ -639,7 +639,7 @@ Built with Rust, Axum, and a stubborn belief that the internet should be readabl
 
 ## COLOPHON
 
-No JavaScript frameworks were harmed in the making of this server. One scroll event listener was reluctantly employed. It has been given a performance review and is on probation. One HTML `<form>` was admitted for the guestbook. It behaves itself. One CSS custom property override was granted for per-burrow theming. It knows its place.
+No JavaScript was harmed, employed, or even considered in the making of this server. The scroll progress bar is CSS (`animation-timeline: scroll()`). The guestbook form is plain HTML. The per-burrow theming is a CSS custom property. The entire client-side codebase is zero bytes of executable code. We didn't just minimize JavaScript — we eliminated it. The probation ended. The handler was not promoted. It was replaced. By a stylesheet.
 
 The fonts (JetBrains Mono and Literata) do more heavy lifting than the entire backend. We're okay with that. Typography is important. Your words deserve to look good. Even if you insist on making your accent color `#ff00ff`.
 

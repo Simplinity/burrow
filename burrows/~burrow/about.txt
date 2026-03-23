@@ -16,7 +16,7 @@ Everything about burrowd: configuration, TLS, Gemini, deployment, the CLI, and a
 
 ---
 
-Burrow is built with Rust, served over HTTP, HTTPS, and Gemini simultaneously, and contains exactly one scroll event listener that is on permanent probation.
+Burrow is built with Rust, served over HTTP, HTTPS, and Gemini simultaneously, and contains exactly zero lines of JavaScript. The scroll progress bar is pure CSS. The probation ended. The handler was replaced by a stylesheet.
 
 The fonts do more heavy lifting than the backend. We're at peace with that.
 

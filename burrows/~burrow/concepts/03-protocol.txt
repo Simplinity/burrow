@@ -6,7 +6,7 @@ Burrow speaks three languages. Each one is simpler than the last.
 
 HTTPS — the gateway to the normal world.
 
-Visit any burrow in your browser. The server wraps your text in minimal HTML — Literata serif at 17px, comfortable line-height, zero JavaScript (except one scroll handler that is on probation). Share the link on Twitter. People read it instantly. They don't need to understand anything. They just see clean, fast text that loads in 50ms.
+Visit any burrow in your browser. The server wraps your text in minimal HTML — Literata serif at 17px, comfortable line-height, zero JavaScript. Not "minimal." Zero. The scroll progress bar is pure CSS. The guestbook form is plain HTML. Share the link anywhere. People read it instantly. They don't need to understand anything. They just see clean, fast text that loads in 50ms.
 
 At the bottom of every gateway page:
 

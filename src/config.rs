@@ -56,6 +56,10 @@ impl ServerConfig {
     }
 
     pub fn has_gph(&self) -> bool {
+        self.gph_port.is_some()
+    }
+
+    pub fn gph_needs_tls(&self) -> bool {
         self.gph_port.is_some() && self.has_tls()
     }
 

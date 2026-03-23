@@ -532,10 +532,16 @@ async fn main() {
     // Spawn gph:// protocol listener if configured
     if cfg.has_gph() {
         let gph_addr = cfg.gph_bind_addr().unwrap();
-        let cert = cfg.tls_cert.clone().unwrap();
-        let key = cfg.tls_key.clone().unwrap();
-        println!("  gph:// native:  \x1b[36mgph://{}:{}\x1b[0m", cfg.domain, cfg.gph_port.unwrap());
-        tokio::spawn(gph_listener(state.clone(), gph_addr, cert, key));
+        let gph_port = cfg.gph_port.unwrap();
+        if cfg.gph_needs_tls() {
+            let cert = cfg.tls_cert.clone().unwrap();
+            let key = cfg.tls_key.clone().unwrap();
+            println!("  gph:// (TLS):   \x1b[36mgph://{}:{}\x1b[0m", cfg.domain, gph_port);
+            tokio::spawn(gph_listener_tls(state.clone(), gph_addr, cert, key));
+        } else {
+            println!("  gph:// (plain): \x1b[36mgph://localhost:{}\x1b[0m \x1b[90m(no TLS — dev mode)\x1b[0m", gph_port);
+            tokio::spawn(gph_listener_plain(state.clone(), gph_addr));
+        }
     }
 
     // Spawn outgoing federation pings (background, fire-and-forget)
@@ -2588,7 +2594,27 @@ async fn gemini_serve_path(url_path: &str, domain: &str) -> String {
 
 // ── gph:// Native Protocol ───────────────────────────────────────
 
-async fn gph_listener(state: AppState, bind_addr: String, tls_cert: String, tls_key: String) {
+async fn gph_listener_plain(state: AppState, bind_addr: String) {
+    let listener = tokio::net::TcpListener::bind(&bind_addr).await.unwrap_or_else(|e| {
+        eprintln!("  \x1b[31m✗\x1b[0m gph: failed to bind {}: {}", bind_addr, e);
+        std::process::exit(1);
+    });
+
+    tracing::info!("gph:// listening on {} (plain TCP)", bind_addr);
+
+    loop {
+        let (mut stream, _addr) = match listener.accept().await {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let state = state.clone();
+        tokio::spawn(async move {
+            handle_gph_request(&mut stream, &state).await;
+        });
+    }
+}
+
+async fn gph_listener_tls(state: AppState, bind_addr: String, tls_cert: String, tls_key: String) {
     use tokio_rustls::TlsAcceptor;
     use std::io::BufReader;
 

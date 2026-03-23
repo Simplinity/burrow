@@ -88,6 +88,8 @@ enum Commands {
     },
     /// Generate a colophon.txt for your burrow (metadata, stats, rings)
     Colophon,
+    /// Generate a changelog.txt from filesystem modification times
+    Changelog,
     /// Save a link to read later (private, prefixed with _)
     ReadLater {
         /// URL or internal path (e.g. "/~maya/phlog/post" or "https://example.com")
@@ -231,6 +233,7 @@ fn main() {
         Commands::Push { remote } => cmd_push(&burrows_root, &remote),
         Commands::Pull { remote } => cmd_pull(&burrows_root, &remote),
         Commands::Colophon => cmd_colophon(&burrows_root),
+        Commands::Changelog => cmd_changelog(&burrows_root),
         Commands::Import { input, output } => cmd_import(&burrows_root, &input, output.as_deref()),
         Commands::Lint { path } => cmd_lint(&burrows_root, path.as_deref()),
         Commands::ReadLater { url, desc } => cmd_read_later(&burrows_root, &url, desc.as_deref()),
@@ -850,6 +853,79 @@ fn cmd_colophon(burrows_root: &Path) {
     println!();
     println!("  View at \x1b[36m/{}/colophon\x1b[0m", name);
     println!();
+}
+
+fn cmd_changelog(burrows_root: &Path) {
+    let name = require_active_burrow(burrows_root);
+    let root = burrow_path(burrows_root, &name);
+
+    // Collect all files with their modification times
+    let mut entries: Vec<(String, String, String)> = Vec::new(); // (date, time, relative_path)
+    collect_files_with_mtime(&root, &root, &mut entries);
+
+    // Sort by date descending (newest first)
+    entries.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
+
+    // Build changelog
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let mut changelog = format!("# Changelog\n\nGenerated on {}.\n\n", today);
+    changelog.push_str("All files sorted by last modification date, newest first.\n\n---\n\n");
+
+    let mut current_date = String::new();
+    let mut file_count = 0;
+
+    for (date, time, path) in &entries {
+        if *date != current_date {
+            if !current_date.is_empty() {
+                changelog.push('\n');
+            }
+            changelog.push_str(&format!("## {}\n\n", date));
+            current_date = date.clone();
+        }
+        changelog.push_str(&format!("  {}  {}\n", time, path));
+        file_count += 1;
+    }
+
+    // Write to changelog.txt
+    let changelog_path = root.join("changelog.txt");
+    fs::write(&changelog_path, &changelog).unwrap();
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Changelog generated for {}", name);
+    println!();
+    println!("  {} files tracked", file_count);
+    println!("  {}", changelog_path.display());
+    println!();
+    println!("  View at \x1b[36m/{}/changelog\x1b[0m", name);
+    println!();
+}
+
+fn collect_files_with_mtime(dir: &Path, root: &Path, entries: &mut Vec<(String, String, String)>) {
+    if let Ok(items) = fs::read_dir(dir) {
+        for item in items.flatten() {
+            let name = item.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name.starts_with('_') {
+                continue;
+            }
+            let path = item.path();
+            if path.is_dir() {
+                collect_files_with_mtime(&path, root, entries);
+            } else if name.ends_with(".txt") || name.ends_with(".gph") {
+                let relative = path.strip_prefix(root)
+                    .unwrap_or(&path)
+                    .to_string_lossy()
+                    .to_string();
+                if let Ok(meta) = fs::metadata(&path) {
+                    if let Ok(modified) = meta.modified() {
+                        let dt: chrono::DateTime<Local> = modified.into();
+                        let date = dt.format("%Y-%m-%d").to_string();
+                        let time = dt.format("%H:%M").to_string();
+                        entries.push((date, time, relative));
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn count_words_recursive(dir: &Path) -> usize {

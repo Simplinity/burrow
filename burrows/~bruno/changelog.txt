@@ -1,0 +1,34 @@
+# Changelog
+
+Generated on 2026-03-23.
+
+All files sorted by last modification date, newest first.
+
+---
+
+## 2026-03-23
+
+  11:40  phlog/2026-03-23-on-inspiration.txt
+  02:16  colophon.txt
+  02:13  phlog/why-plaintext-part-03.txt
+  02:12  phlog/why-plaintext-part-02.txt
+  02:12  phlog/why-plaintext-part-01.txt
+
+## 2026-03-22
+
+  16:11  timecapsule-2026.txt
+  13:33  bookmarks.gph
+  12:45  gallery/coffee.txt
+  12:45  gallery/plant.txt
+  12:45  gallery/sunset.txt
+  12:45  gallery/burrow-logo.txt
+  12:45  gallery/maze.txt
+
+## 2026-03-17
+
+  03:48  projects/revend.txt
+  03:48  phlog/2026-03-10-the-weight-of-a-webpage.txt
+  03:47  links.gph
+  03:47  about.txt
+  03:47  phlog/2026-03-17-why-i-left-medium.txt
+  03:47  now.txt

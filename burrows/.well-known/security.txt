@@ -1,0 +1,5 @@
+# Security contact for this Burrow server
+# See https://securitytxt.org/ for the specification
+
+Contact: mailto:security@example.com
+Preferred-Languages: en

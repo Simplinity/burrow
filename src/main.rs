@@ -381,6 +381,7 @@ async fn main() {
         .route("/search", get(search_handler))
         .route("/search/index.json", get(search_index_json))
         .route("/ping", axum::routing::post(receive_ping))
+        .route("/.well-known/{*path}", get(well_known))
         .route("/{*path}", get(serve_burrow).post(post_guestbook))
         .layer(TraceLayer::new_for_http())
         .with_state(state.clone());
@@ -659,6 +660,19 @@ async fn servers_page(headers: HeaderMap, State(state): State<AppState>) -> Html
     let burrows = list_burrows().await;
     let servers = load_servers().await;
     Html(render::servers_page(&servers, &burrows, &domain))
+}
+
+async fn well_known(Path(path): Path<String>) -> Response {
+    // Sanitize: no path traversal, no subdirectories beyond one level
+    if path.contains("..") || path.contains('/') {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    let file_path = path::PathBuf::from("burrows/.well-known").join(&path);
+    if let Ok(content) = fs::read_to_string(&file_path).await {
+        ([(header::CONTENT_TYPE, "text/plain; charset=utf-8")], content).into_response()
+    } else {
+        StatusCode::NOT_FOUND.into_response()
+    }
 }
 
 async fn favicon_ico() -> impl IntoResponse {

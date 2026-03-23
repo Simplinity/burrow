@@ -88,6 +88,16 @@ enum Commands {
     },
     /// Generate a colophon.txt for your burrow (metadata, stats, rings)
     Colophon,
+    /// Save a link to read later (private, prefixed with _)
+    ReadLater {
+        /// URL or internal path (e.g. "/~maya/phlog/post" or "https://example.com")
+        url: String,
+        /// Description
+        #[arg(short, long)]
+        desc: Option<String>,
+    },
+    /// Show your reading list
+    ReadingList,
     /// Export your burrow as a tar.gz backup
     Export {
         /// Output file path (default: ~/burrow-export-YYYY-MM-DD.tar.gz)
@@ -196,6 +206,8 @@ fn main() {
         Commands::Push { remote } => cmd_push(&burrows_root, &remote),
         Commands::Pull { remote } => cmd_pull(&burrows_root, &remote),
         Commands::Colophon => cmd_colophon(&burrows_root),
+        Commands::ReadLater { url, desc } => cmd_read_later(&burrows_root, &url, desc.as_deref()),
+        Commands::ReadingList => cmd_reading_list(&burrows_root),
         Commands::Timecapsule { year } => cmd_timecapsule(&burrows_root, year),
         Commands::Export { output } => cmd_export(&burrows_root, output.as_deref()),
         Commands::Ring { command } => match command {
@@ -1821,6 +1833,82 @@ fn cmd_bookmark_remove(burrows_root: &Path, number: usize) {
 
     println!();
     println!("  \x1b[1m/\x1b[0m Bookmark #{} removed.", number);
+    println!();
+}
+
+fn reading_list_path(burrows_root: &Path, name: &str) -> PathBuf {
+    burrow_path(burrows_root, name).join("_reading-list.gph")
+}
+
+fn cmd_read_later(burrows_root: &Path, url: &str, desc: Option<&str>) {
+    let name = require_active_burrow(burrows_root);
+    let path = reading_list_path(burrows_root, &name);
+
+    let today = Local::now().format("%Y-%m-%d").to_string();
+    let desc_str = desc.unwrap_or("");
+
+    let entry = if url.starts_with("http://") || url.starts_with("https://") || url.starts_with("gph://") {
+        if desc_str.is_empty() {
+            format!("→ {}   · {}\n", url, today)
+        } else {
+            format!("→ {}   {} · {}\n", url, desc_str, today)
+        }
+    } else {
+        let url = if url.starts_with('/') { url.to_string() } else { format!("/{}", url) };
+        if desc_str.is_empty() {
+            format!("{}   · {}\n", url, today)
+        } else {
+            format!("{}   {} · {}\n", url, desc_str, today)
+        }
+    };
+
+    let mut content = if path.exists() {
+        fs::read_to_string(&path).unwrap_or_default()
+    } else {
+        String::new()
+    };
+    content.push_str(&entry);
+    fs::write(&path, content).unwrap();
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Saved to reading list.");
+    println!("  \x1b[90m{}\x1b[0m", url);
+    if !desc_str.is_empty() {
+        println!("  {}", desc_str);
+    }
+    println!();
+    println!("  \x1b[90mThis file is private (starts with _). Only you can see it.\x1b[0m");
+    println!();
+}
+
+fn cmd_reading_list(burrows_root: &Path) {
+    let name = require_active_burrow(burrows_root);
+    let path = reading_list_path(burrows_root, &name);
+
+    if !path.exists() {
+        println!();
+        println!("  \x1b[1m/\x1b[0m Reading list is empty.");
+        println!();
+        println!("  Add something: \x1b[1mburrow read-later /~maya/phlog/post\x1b[0m");
+        println!();
+        return;
+    }
+
+    let content = fs::read_to_string(&path).unwrap_or_default();
+    let items = parse_bookmarks(&content);
+
+    println!();
+    println!("  \x1b[1m/\x1b[0m Reading list \x1b[90m({} items, private)\x1b[0m", items.len());
+    println!();
+
+    for (i, (url, desc)) in items.iter().enumerate() {
+        if desc.is_empty() {
+            println!("  {}. \x1b[36m{}\x1b[0m", i + 1, url);
+        } else {
+            println!("  {}. \x1b[36m{}\x1b[0m", i + 1, url);
+            println!("     \x1b[90m{}\x1b[0m", desc);
+        }
+    }
     println!();
 }
 

@@ -682,6 +682,13 @@ fn cmd_status(burrows_root: &Path, server_url: &str) {
         if let Some(latest) = latest_phlog_post(&phlog_dir) {
             println!("  Latest:   \x1b[90m{}\x1b[0m", latest);
         }
+
+        // Writing streak — count consecutive days with posts ending today
+        let streak = calculate_streak(&phlog_dir);
+        if streak > 0 {
+            let flame = if streak >= 7 { " 🔥" } else { "" };
+            println!("  Streak:   {} {}{}", streak, if streak == 1 { "day" } else { "days" }, flame);
+        }
         println!();
     }
 }
@@ -2142,6 +2149,52 @@ fn latest_phlog_post(phlog_dir: &Path) -> Option<String> {
         .collect();
     posts.sort();
     posts.last().cloned()
+}
+
+fn calculate_streak(phlog_dir: &Path) -> usize {
+    // Collect unique dates from filenames (YYYY-MM-DD prefix)
+    let mut dates: Vec<chrono::NaiveDate> = Vec::new();
+    if let Ok(entries) = fs::read_dir(phlog_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name.starts_with('_') || name.len() < 10 {
+                continue;
+            }
+            if let Ok(date) = chrono::NaiveDate::parse_from_str(&name[..10], "%Y-%m-%d") {
+                if !dates.contains(&date) {
+                    dates.push(date);
+                }
+            }
+        }
+    }
+    dates.sort();
+    dates.reverse(); // newest first
+
+    if dates.is_empty() {
+        return 0;
+    }
+
+    let today = Local::now().date_naive();
+
+    // The streak must include today or yesterday to be "active"
+    let first = dates[0];
+    if (today - first).num_days() > 1 {
+        return 0; // Last post was more than 1 day ago — streak broken
+    }
+
+    // Count consecutive days backwards from the most recent post
+    let mut streak = 1;
+    for i in 1..dates.len() {
+        let diff = (dates[i - 1] - dates[i]).num_days();
+        if diff == 1 {
+            streak += 1;
+        } else if diff == 0 {
+            continue; // Same day, skip (shouldn't happen with dedup but just in case)
+        } else {
+            break; // Gap found, streak ends
+        }
+    }
+    streak
 }
 
 // ── Lint ─────────────────────────────────────────────────────────

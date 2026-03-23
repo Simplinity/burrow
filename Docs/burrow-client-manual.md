@@ -97,19 +97,95 @@ burrow server init --domain phlogosphere.net --port 7070
 
 Creates `burrow.conf` with your domain, port, and optional aliases for custom domains. The server reads this on startup.
 
-### Coming to the CLI
+### Search
 
-These features exist in the server but don't have CLI commands yet. They will:
+```bash
+# Search your active burrow
+burrow search "typography"
 
-- **`burrow search`** — local grep across your burrow content
-- **`burrow bookmark`** — add/list/remove public bookmarks
-- **`burrow ring`** — create and manage webrings
-- **`burrow push` / `burrow pull`** — rsync-based remote sync
-- **`burrow export`** — tar.gz backup of your burrow
-- **`burrow preview`** — terminal preview of drafts (`_` prefixed files)
-- **`burrow timecapsule`** — yearly stats generation
+# Search all burrows on the server
+burrow search "rust async" --all
+```
 
-All of these work through the web interface today. The CLI commands will make them keyboard-accessible.
+Case-insensitive grep with highlighted matches. Fast, local, no index needed. The server has BM25 full-text search at `/search` — the CLI search is simpler but works offline.
+
+### Bookmarks
+
+```bash
+# Add a public bookmark
+burrow bookmark add https://100r.co -d "Hundred Rabbits — off-grid computing"
+burrow bookmark add /~maya/about -d "Maya's about page"
+
+# List your bookmarks
+burrow bookmark list
+
+# Remove by number
+burrow bookmark remove 3
+```
+
+Your bookmarks live at `/~you/bookmarks` as `bookmarks.gph`. They're public. They're your taste, on display. Bookmark counts are the only ranking signal on the Discover page.
+
+### Rings (Webrings)
+
+```bash
+# Create a ring
+burrow ring create "Deep Web Craft" -d "Writers who care about the web as a medium"
+
+# Add members (local or remote)
+burrow ring add deep-web-craft /~maya
+burrow ring add deep-web-craft gph://tilde.town/~river
+
+# Show ring members
+burrow ring show deep-web-craft
+
+# List your rings
+burrow ring list
+
+# Remove a member
+burrow ring remove deep-web-craft /~maya
+```
+
+Rings span servers. Members can be local paths or `gph://` URLs. A ring can even include another ring (nested rings). Navigation arrows appear at the bottom of every page for every ring the burrow belongs to.
+
+### Preview
+
+```bash
+# Preview a file in the terminal (including _ drafts)
+burrow preview _work-in-progress.txt
+burrow preview phlog/my-post.txt
+```
+
+Renders `.gph` markup in your terminal — headings, quotes, links, code blocks. Works on draft files that the server won't serve. See what your readers will see, without publishing.
+
+### Archival & Sync
+
+```bash
+# Export a backup
+burrow export ~/backups/alice-2026-03.tar.gz
+
+# Push your burrow to a remote server
+burrow push user@phlogosphere.net:/srv/burrow/burrows/
+
+# Pull from remote
+burrow pull user@phlogosphere.net:/srv/burrow/burrows/~bruno/
+
+# Generate a year-in-review
+burrow timecapsule 2026
+```
+
+`export` creates a tar.gz backup. `push`/`pull` use rsync over SSH — your burrow is files, you copy them. `timecapsule` produces a yearly stats summary with post counts, word totals, and a chronological index.
+
+### Protocol Handler
+
+```bash
+# Register gph:// URL handler on your OS
+burrow register
+
+# Open a gph:// URL
+burrow open gph://phlogosphere.net/~bruno/about
+```
+
+On macOS, `register` creates a `.app` bundle. On Linux, a `.desktop` file. Click a `gph://` link anywhere on your system and Burrow handles it. `open` previews the content locally if possible, otherwise opens it in your default browser.
 
 ---
 

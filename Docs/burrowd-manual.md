@@ -58,12 +58,26 @@ When someone visits `http://yourserver:7070/~alice/phlog/2026-03-20-hello-world`
 
 | Path | What Happens |
 |------|-------------|
-| `/` | Home page: lists all `~user/` burrows |
+| `/` | Home page: lists all `~user/` burrows with descriptions |
 | `/~alice` | Directory listing of Alice's burrow |
 | `/~alice/about` | Renders `about.txt` (yes, `.txt` is auto-appended) |
 | `/~alice/phlog/` | Directory listing of Alice's phlog |
 | `/~alice/guestbook` | Guestbook with a form to sign (see GUESTBOOK below) |
-| `/~alice/feed.xml` | Auto-generated RSS feed of Alice's phlog (see RSS below) |
+| `/~alice/bookmarks` | Public bookmarks page (see BOOKMARKS below) |
+| `/~alice/gallery/` | ASCII art gallery with grid preview (see GALLERY below) |
+| `/~alice/feed.xml` | Auto-generated RSS feed (see FEEDS below) |
+| `/~alice/atom.xml` | Auto-generated Atom feed |
+| `/search?q=...` | Full-text search with BM25 ranking (see SEARCH below) |
+| `/search/index.json` | Machine-readable search index for federation |
+| `/discover` | Discovery page: latest posts, most bookmarked, random burrow, rings |
+| `/firehose` | Chronological stream of all posts across all burrows (paginated) |
+| `/rings` | List of all webrings on this server |
+| `/random` | Redirects to a random burrow. Serendipity as a service. |
+| `/health` | Returns `{"status":"ok"}` — for uptime monitors and anxious sysadmins |
+| `/stats` | Returns `{"burrows":N,"files":N,"uptime_secs":N}` — server vitals |
+| `/robots.txt` | Allows all crawlers. We have nothing to hide. |
+| `/favicon.ico` | Transparent 1x1 icon. Stops browsers from 404-ing on every page load. |
+| `POST /ping` | Federation ping receiver (see FEDERATION below) |
 | `/nonexistent` | A 404 page with existential undertones |
 
 ### Content Format
@@ -194,45 +208,7 @@ burrowd
 #   Press Ctrl+C to fill in the hole.
 ```
 
-The server binds to `127.0.0.1` only. It trusts you to put a reverse proxy in front of it if you want to face the internet. We recommend nginx, caddy, or a very stern firewall.
-
-### Production Deployment
-
-```bash
-# 1. Put your burrowd binary somewhere sensible
-cp burrowd /usr/local/bin/
-
-# 2. Create your config
-burrow server init --domain yoursite.com --port 7070
-
-# 3. Run it
-burrowd
-
-# 4. Put a real web server in front of it (nginx example)
-#    location / {
-#        proxy_pass http://127.0.0.1:7070;
-#    }
-
-# 5. There is no step 5. You're done. Go write something.
-```
-
-### systemd (for the Linux Faithful)
-
-```ini
-[Unit]
-Description=burrowd — a hole in the internet
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/srv/burrow
-ExecStart=/usr/local/bin/burrowd
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
+The server binds to `0.0.0.0` — all network interfaces. This means it's accessible from your LAN immediately. The startup banner shows your LAN IP for convenience. If you want localhost-only, put a firewall in front of it. We trust you to know what you're doing. (We trust you more than most software does, actually.)
 
 ## SECURITY
 
@@ -240,11 +216,12 @@ We take security seriously, even if we don't take much else seriously:
 
 - **Path traversal protection**: All paths are canonicalized and verified to stay inside `burrows/`. Your `../../etc/passwd` jokes won't work here. We've heard them all.
 - **HTML escaping**: All user content is escaped before rendering. Both in text content (`<` → `&lt;`) and in URL attributes (`"` → `&quot;`). XSS is not a feature.
-- **File size limit**: 64 KB maximum per file. If your plaintext file is over 64 KB, you may be writing a novel. We respect that, but we won't serve it. Write a book. Get an editor. Not a text editor — an actual human editor.
+- **File size limit**: 64 KB for text files, 2 MB for binary files (images, audio, PDF). If your plaintext file is over 64 KB, you may be writing a novel. We respect that, but we won't serve it. Write a book. Get an editor. Not a text editor — an actual human editor.
 - **Depth limit**: Maximum 8 directory levels below your `~user/`. If you need `~alice/a/b/c/d/e/f/g/h/i/`, you don't need Burrow, you need therapy. Or a database. Possibly both.
-- **Directory cap**: Maximum 256 entries per directory listing. After that, we politely stop counting. If Marie Kondo had a server, this would be it.
-- **Draft enforcement**: Files starting with `_` return 404 on both GET and POST. The filesystem knows they exist, but the server pretends they don't. Method acting, but for web servers.
-- **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person. (The guestbook form is the one exception — it appends text to a single file. We had a long meeting about this. The votes were 3-2.)
+- **Draft enforcement**: Files and directories starting with `_` or `.` return 404 on HTTP. The filesystem knows they exist, but the server pretends they don't. Method acting, but for web servers.
+- **Guestbook rate limiting**: One guestbook post per 30 seconds per IP address. Spammers will need to be very, very patient.
+- **Federation ping cap**: Maximum 100 stored pings per server. We remember who mentioned you, but we don't remember *everyone* who mentioned you. Storage has limits. Memory doesn't have to.
+- **No file uploads**: burrowd serves files. It does not accept them. Content goes in via the CLI or your file manager like a civilized person. (The guestbook form and `/ping` endpoint are the exceptions — one appends text, the other stores a JSON reference. We had meetings about both.)
 
 ## GUESTBOOK
 
@@ -282,18 +259,169 @@ View entries from the CLI:
 burrow guestbook show
 ```
 
-## RSS
+## FEEDS (RSS & Atom)
 
-Every burrow automatically gets an RSS feed. No configuration needed. No plugins. No "install the RSS extension." It just works, like things used to.
+Every burrow automatically gets both an RSS and an Atom feed. No configuration. No plugins. No "install the RSS extension." It just works, like things used to.
 
 ```
-/~alice/feed.xml    ← full RSS 2.0 XML feed
+/~alice/feed.xml    ← RSS 2.0 feed
 /~alice/feed        ← same thing, for the lazy typist
+/~alice/atom.xml    ← Atom 1.0 feed
+/~alice/atom        ← same thing, for the even lazier typist
 ```
 
-The feed includes all `.txt` posts from the `phlog/` directory, sorted newest first, with a content preview. Your favorite RSS reader (you have one, right? *Right?*) will auto-discover it via the `<link rel="alternate">` tag in every page's `<head>`.
+Both feeds include all `.txt` posts from the `phlog/` directory, sorted newest first, with a content preview. Your favorite feed reader will auto-discover both via `<link rel="alternate">` tags in every page's `<head>`.
 
-The feed uses whatever domain you configured with `burrow server init`. If you're still on `localhost`, the feed URLs will say `http://localhost:7070`. If you set a domain, they'll say `https://yourdomain.com`. We assume HTTPS because it's 2026 and you're not a barbarian.
+The feeds use whatever domain matches the incoming `Host` header (see CUSTOM DOMAINS above). If you're on `localhost`, URLs say `http://localhost:7070`. If you set a domain, they say `https://yourdomain.com`. We assume HTTPS because it's 2026.
+
+## SEARCH (Veronica-NG)
+
+burrowd builds a full-text search index at startup. Every public `.txt` and `.gph` file is tokenized, indexed, and scored using BM25 — the same ranking algorithm your favorite search engine pretends it doesn't use.
+
+```
+/search?q=typography         ← basic search
+/search?q=author:~bruno      ← filter by author
+/search?q=fresh:30 rust      ← posts from the last 30 days about rust
+/search?q=type:phlog async   ← only phlog posts about async
+```
+
+### Search Operators
+
+| Operator | Example | Effect |
+|----------|---------|--------|
+| `author:~name` | `author:~bruno` | Only results from that burrow |
+| `type:kind` | `type:phlog` | Filter by document type (phlog, page, guestbook, gallery) |
+| `fresh:N` | `fresh:7` | Only posts from the last N days |
+
+Results are ranked by BM25 relevance with a freshness boost — recent posts score higher, with a 90-day decay curve. Title matches score 3x body matches. The algorithm is deterministic: same query, same results, for everyone. No filter bubble. No personalization. No "because you liked..."
+
+### Federation Index
+
+The search index is exported at `/search/index.json` — a machine-readable JSON document that other Burrow servers can fetch to include your content in their search results. Voluntary, read-only, and entirely opt-in by the remote server.
+
+## BOOKMARKS
+
+Every burrow can have a public bookmarks page. Create a `bookmarks.gph` file:
+
+```
+→ https://100r.co
+Hundred Rabbits — off-grid computing
+
+→ /~maya/phlog/on-digital-minimalism
+Maya's excellent piece on less
+
+→ https://solar.lowtechmagazine.com
+Low-Tech Magazine — the solar-powered website
+```
+
+The server renders this at `/~user/bookmarks` with a dedicated bookmarks layout. Bookmark counts are the **only ranking signal** on the Discover page — the more people who bookmark a burrow, the higher it appears in "Most Bookmarked." This is Burrow's answer to likes, stars, and upvotes: public curation by people who care enough to save something.
+
+## GALLERY
+
+Any directory named `gallery/` gets special treatment. Instead of a boring file listing, burrowd renders a grid of ASCII art previews — the first 10 lines of each `.txt` file, in a monospace card layout. Click a piece to see it full-size in a dedicated art viewer with a monospace `<pre>` block.
+
+Put your ASCII art in `~you/gallery/`:
+
+```
+burrows/~alice/gallery/
+  sunset.txt
+  coffee.txt
+  maze.txt
+```
+
+Each file is just text. The server does the rest. No image formats, no uploads, no media management. The constraint forces creativity. Some of the best art on Burrow will be 40 characters wide and made entirely of `#` signs.
+
+## RINGS (Webrings)
+
+Webrings are back, and they're better than ever. A ring is a curated loop of burrows — members linked in a circle, with navigation arrows at the bottom of every page.
+
+Ring files live in `~user/rings/`:
+
+```
+burrows/~alice/rings/deep-web-craft.ring
+```
+
+```
+title = Deep Web Craft
+description = Writers who care about the web as a medium
+
+/~alice
+/~bob
+gph://tilde.town/~river
+ring:~alice/indie-web
+```
+
+Members can be local (`/~user`) or remote (`gph://server/~user`). The `ring:~owner/slug` syntax includes all members of another ring — rings of rings, recursively resolved, for when your community has subcommunities.
+
+The server renders ring navigation bars at the bottom of every text page for every ring the burrow belongs to:
+
+```
+← Previous    ◎ Deep Web Craft    Next →
+```
+
+All rings on the server are listed at `/rings`. The Discover page shows them too.
+
+## DISCOVER
+
+The Discover page (`/discover`) is the homepage of the community. No algorithm. No recommendation engine. Just:
+
+- **Latest posts** — the 10 newest phlog posts across all burrows, chronological
+- **Most bookmarked** — burrows ranked by how many other burrows bookmarked them (★ count)
+- **Random burrow** — a random spotlight, refreshed on every page load
+- **Rings** — all webrings on this server
+- **All burrows** — the complete list with descriptions
+
+This is the only "social" page on the server. It exists to help you find things worth reading. It does not track what you click, how long you read, or whether you came back. It shows you what exists. You decide what matters.
+
+### Firehose
+
+`/firehose` is the raw chronological stream — every phlog post from every burrow, newest first, paginated 20 per page. No curation. No ranking. Pure chronology. The anti-algorithm.
+
+## MENTIONS & FEDERATION
+
+### Local Mentions
+
+When you link to another burrow's post in your writing, the server detects it. The linked post displays a "Mentioned by" section at the bottom, listing everyone who referenced it. This is the closest thing Burrow has to notifications — except it's not a notification. Nobody gets pinged. Nobody gets a badge. The mention just... appears, quietly, for anyone who visits the page.
+
+### Federation Pings
+
+When burrowd starts, it scans all posts for `gph://` links to remote servers. For each one, it sends an HTTP POST to the remote server's `/ping` endpoint:
+
+```json
+{"source": "https://yourserver.com/~alice/phlog/my-post", "target": "gph://remote.server/~bob/about"}
+```
+
+The remote server stores the ping (up to 100 per server) and displays it as a remote mention. No protocol negotiation. No handshake. Just: "hey, I linked to you." The simplest possible federation.
+
+Incoming pings are stored in `burrows/.pings` as a JSON file. They're displayed alongside local mentions on the target post.
+
+## BINARY FILE SERVING
+
+burrowd serves more than text. Images, audio, PDFs, and other binary files are served with correct MIME types and `Cache-Control` headers:
+
+| Extension | MIME Type | Max Size |
+|-----------|-----------|----------|
+| `.png` `.jpg` `.jpeg` `.gif` `.svg` `.webp` | image/* | 2 MB |
+| `.mp3` `.ogg` `.wav` | audio/* | 2 MB |
+| `.pdf` | application/pdf | 2 MB |
+| `.woff` `.woff2` | font/* | 2 MB |
+| `.tar.gz` `.zip` | application/* | 2 MB |
+
+Binary files are served raw — no HTML wrapping, no preview. The browser handles rendering. Text files (`.txt`, `.gph`) still get the full reading-view treatment. The 2 MB limit for binaries is separate from the 64 KB limit for text — because a 64 KB PNG would be one and a half pixels.
+
+## GEMINI BRIDGE
+
+If you configure `gemini_port` and TLS in `burrow.conf`, burrowd speaks the Gemini protocol alongside HTTP(S). Every `.gph` file is automatically converted to Gemtext (`.gmi`):
+
+```conf
+gemini_port = 1965
+tls_cert = /path/to/cert.pem
+tls_key = /path/to/key.pem
+```
+
+The Gemini listener serves the same content: home page, directory listings, text files, feeds, and even the discover page — all in Gemtext format. Point any Gemini client at `gemini://yourserver:1965/` and it just works.
+
+The conversion is lossy by design: `.gph` headings become Gemini headings, links become Gemini links, blockquotes stay blockquotes. Code blocks and horizontal rules translate cleanly. What doesn't translate is the typography — Gemini clients bring their own fonts. That's fine. The words are what matter.
 
 ## THE ADDRESS BAR
 
@@ -303,15 +431,19 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 
 | Thing | Limit | Why |
 |-------|-------|-----|
-| File size | 64 KB | You're writing a phlog, not *War and Peace*. (If you are writing *War and Peace*, congratulations. Use a different server.) |
-| Directory entries | 256 | Minimalism isn't just aesthetic, it's architectural |
+| Text file size | 64 KB | You're writing a phlog, not *War and Peace*. |
+| Binary file size | 2 MB | Images and audio get more room. Generosity has limits. |
 | Directory depth | 8 levels | After 8 levels you're not organizing, you're nesting |
-| Burrow size | 1 MB total (free tier) | Constraints breed creativity. Also, disk space costs money. |
+| Guestbook entries | 200 per burrow | The internet is why we can't have nice things |
+| Guestbook rate | 1 post / 30 sec / IP | Spammers hate this one weird trick |
+| Federation pings | 100 stored | We remember mentions. Not all of them. |
+| Firehose page size | 20 posts | Pagination. It's what adults do. |
 | JavaScript | 1 scroll handler | We are not proud. We are not ashamed. |
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
-| Config options | 2 (server) + 2 (burrow) | We added theming. It was a whole thing. |
-| POST endpoints | 1 (guestbook) | We agonized over this. |
+| Config options | 6 (server) + 5 (burrow) | We started with 2. Reality happened. |
+| POST endpoints | 2 (guestbook + ping) | We agonized over the first. The second was easier. |
+| Protocols | 3 (HTTP, HTTPS, Gemini) | One protocol is never enough. Three might be too many. We don't care. |
 
 ## TROUBLESHOOTING
 
@@ -424,22 +556,55 @@ Logs go to stderr. Redirect to a file if you want history: `burrowd 2>> /var/log
 
 The server's partner in crime. All content management happens here.
 
+### Core
+
 ```
-burrow init <name>         Create a new ~name/ burrow
-burrow new "<title>"       Create a dated phlog post, open $EDITOR
-burrow ls [path]           List burrow contents
-burrow status              Show burrow stats
-burrow edit <path>         Open file in $EDITOR
-burrow switch              List all burrows (← marks the active one)
-burrow switch <name>       Switch active burrow (with or without ~)
-burrow guestbook init      Create guestbook.gph
-burrow guestbook show      Display entries in terminal
-burrow server init         Generate burrow.conf
+burrow init <name>                Create a new ~name/ burrow
+burrow new "<title>"              Create a dated phlog post, open $EDITOR
+burrow edit <path>                Open a file in $EDITOR
+burrow ls [path]                  List burrow contents
+burrow status                     Show burrow stats (files, size, latest post)
+burrow switch                     List all burrows (← marks the active one)
+burrow switch <name>              Switch active burrow
+burrow preview <path>             Preview a file in the terminal (gph rendering)
+burrow search <query> [--all]     Grep across your burrow (or all burrows)
 ```
 
-`burrow switch` is how you juggle multiple burrows. Running it without arguments shows all burrows with their descriptions and a little `←` arrow pointing at the active one. Running it with a name writes `.burrow-active` and you're done. No confirmation dialog, no "are you sure?", no save button. It's a text file. We wrote to it. Move on.
+### Social
 
-If there's only one burrow, the CLI uses it automatically. If there are several and you haven't explicitly switched, it reads `burrows/.burrow-active`. If that file doesn't exist either, it panics — politely, with a helpful error message, but it panics. Create a burrow. We believe in you.
+```
+burrow bookmark add <url> -d "description"    Add a public bookmark
+burrow bookmark list                          List your bookmarks
+burrow bookmark remove <N>                    Remove by number
+burrow ring create "<name>" -d "description"  Create a webring
+burrow ring add <slug> <member>               Add member (local or gph://)
+burrow ring remove <slug> <member>            Remove member
+burrow ring show <slug>                       Show ring members
+burrow ring list                              List your rings
+burrow guestbook init                         Create guestbook.gph
+burrow guestbook show                         Display entries in terminal
+```
+
+### Archival & Sync
+
+```
+burrow export [output.tar.gz]     Backup your burrow as tar.gz
+burrow push <remote>              Push to remote server via rsync/SSH
+burrow pull <remote>              Pull from remote server via rsync/SSH
+burrow timecapsule [year]         Generate yearly stats summary
+```
+
+### Protocol & Server
+
+```
+burrow open <gph://url>           Open a gph:// URL (local preview or browser)
+burrow register                   Register gph:// protocol handler (macOS/Linux)
+burrow server init                Generate burrow.conf
+```
+
+`burrow switch` is how you juggle multiple burrows. Running it without arguments shows all burrows with their descriptions and a little `←` arrow pointing at the active one. Running it with a name writes `.burrow-active` and you're done.
+
+If there's only one burrow, the CLI uses it automatically. If there are several and you haven't explicitly switched, it reads `burrows/.burrow-active`. If that doesn't exist, it tells you to pick one. Politely.
 
 ## THE BIG PICTURE
 

@@ -95,6 +95,7 @@ fn head_with_accent(title: &str, addr: &str, domain: &str, accent: Option<&str>)
 <style>{CSS}</style>{accent_css}
 <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="{rss_href}">
 <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="{atom_href}">
+<link rel="canonical" href="gph://{domain}{addr}">
 </head>
 <body>
 <div class="topbar">

@@ -101,6 +101,14 @@ fn extract_inspired_by_skips_empty_lines() {
 }
 
 #[test]
+fn extract_guest_author_works() {
+    assert_eq!(render::extract_guest_author("guest-~maya-on-simplicity.txt"), Some("~maya".to_string()));
+    assert_eq!(render::extract_guest_author("guest-~bob-thoughts.gph"), Some("~bob".to_string()));
+    assert_eq!(render::extract_guest_author("about.txt"), None);
+    assert_eq!(render::extract_guest_author("guest-no-tilde.txt"), None);
+}
+
+#[test]
 fn extract_series_number_works() {
     assert_eq!(extract_series_number("part-01"), Some(("part-", 1)));
     assert_eq!(extract_series_number("part-12"), Some(("part-", 12)));

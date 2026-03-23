@@ -282,6 +282,15 @@ pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentio
         ));
     }
 
+    // Guest author convention: filename starting with "guest-~name-"
+    if let Some(guest) = extract_guest_author(filename) {
+        html.push_str(&format!(
+            r#"<div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:12px;padding:8px 14px;border-left:3px solid var(--accent);">Guest post by <a href="/{}" style="color:var(--accent);font-weight:500;">{}</a></div>"#,
+            html_escape_attr(&guest),
+            html_escape(&guest)
+        ));
+    }
+
     html.push_str(&format!(r#"<div class="reading">
 <div class="meta">~{read_min} min read · {words} words{series_meta}</div>
 {rendered}
@@ -783,6 +792,22 @@ pub fn extract_inspired_by(content: &str) -> (Option<(String, String)>, String) 
         break;
     }
     (None, content.to_string())
+}
+
+/// Extract guest author from filename convention: guest-~maya-title.txt → Some("~maya")
+pub fn extract_guest_author(filename: &str) -> Option<String> {
+    let name = filename.trim_end_matches(".txt").trim_end_matches(".gph");
+    if let Some(rest) = name.strip_prefix("guest-") {
+        // Find the author: ~name up to the next -
+        if rest.starts_with('~') {
+            let author_end = rest[1..].find('-').map(|i| i + 1).unwrap_or(rest.len());
+            let author = &rest[..author_end];
+            if !author.is_empty() {
+                return Some(author.to_string());
+            }
+        }
+    }
+    None
 }
 
 pub fn render_gph(content: &str) -> String {

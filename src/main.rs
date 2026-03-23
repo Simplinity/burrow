@@ -14,6 +14,7 @@ use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
+use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
@@ -383,8 +384,13 @@ async fn main() {
         .route("/ping", axum::routing::post(receive_ping))
         .route("/.well-known/{*path}", get(well_known))
         .route("/{*path}", get(serve_burrow).post(post_guestbook))
-        .layer(TraceLayer::new_for_http())
-        .with_state(state.clone());
+        .layer(TraceLayer::new_for_http());
+
+    let app = if cfg.compression {
+        app.layer(CompressionLayer::new()).with_state(state.clone())
+    } else {
+        app.with_state(state.clone())
+    };
 
     let local_ip = local_ip_address().unwrap_or_else(|| "127.0.0.1".to_string());
 
@@ -393,6 +399,9 @@ async fn main() {
     println!("  Domain:         \x1b[36m{}\x1b[0m", cfg.domain);
     if !cfg.aliases.is_empty() {
         println!("  Aliases:        \x1b[36m{}\x1b[0m", cfg.aliases.join(", "));
+    }
+    if cfg.compression {
+        println!("  Compression:    \x1b[36menabled (gzip/brotli)\x1b[0m");
     }
 
     // Spawn Gemini listener if configured

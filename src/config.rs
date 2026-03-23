@@ -9,6 +9,7 @@ pub struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub gemini_port: Option<u16>,
+    pub compression: bool,
 }
 
 impl Default for ServerConfig {
@@ -20,6 +21,7 @@ impl Default for ServerConfig {
             tls_cert: None,
             tls_key: None,
             gemini_port: None,
+            compression: false,
         }
     }
 }
@@ -92,6 +94,8 @@ impl ServerConfig {
                 if let Ok(p) = val.trim().parse() {
                     config.gemini_port = Some(p);
                 }
+            } else if let Some(val) = line.strip_prefix("compression = ") {
+                config.compression = val.trim() == "true";
             } else if let Some(val) = line.strip_prefix("aliases = ") {
                 config.aliases = val.split(',')
                     .map(|s| s.trim().to_string())

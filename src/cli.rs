@@ -724,6 +724,7 @@ fn cmd_server_init(burrows_root: &Path, domain: &str, port: u16) {
 
     let cfg = ServerConfig {
         domain: domain.to_string(),
+        aliases: Vec::new(),
         port,
         tls_cert: None,
         tls_key: None,

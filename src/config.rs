@@ -4,6 +4,7 @@ use std::path::Path;
 #[derive(Debug, Clone)]
 pub struct ServerConfig {
     pub domain: String,
+    pub aliases: Vec<String>,
     pub port: u16,
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
@@ -14,6 +15,7 @@ impl Default for ServerConfig {
     fn default() -> Self {
         Self {
             domain: "localhost".to_string(),
+            aliases: Vec::new(),
             port: 7070,
             tls_cert: None,
             tls_key: None,
@@ -23,6 +25,24 @@ impl Default for ServerConfig {
 }
 
 impl ServerConfig {
+    /// Returns true if the given host (from Host header) matches primary domain or any alias.
+    pub fn is_known_host(&self, host: &str) -> bool {
+        // Strip port if present
+        let host = host.split(':').next().unwrap_or(host);
+        host == self.domain || self.aliases.iter().any(|a| a == host)
+    }
+
+    /// Given a Host header, return the matching domain or fall back to the primary.
+    pub fn resolve_domain(&self, host: Option<&str>) -> String {
+        if let Some(h) = host {
+            let h = h.split(':').next().unwrap_or(h);
+            if self.aliases.iter().any(|a| a == h) {
+                return h.to_string();
+            }
+        }
+        self.domain.clone()
+    }
+
     pub fn has_tls(&self) -> bool {
         self.tls_cert.is_some() && self.tls_key.is_some()
     }
@@ -72,6 +92,11 @@ impl ServerConfig {
                 if let Ok(p) = val.trim().parse() {
                     config.gemini_port = Some(p);
                 }
+            } else if let Some(val) = line.strip_prefix("aliases = ") {
+                config.aliases = val.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
             }
         }
         config

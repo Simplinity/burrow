@@ -89,7 +89,7 @@
 
 - [x] Gemini bridge (`gemini://` serving, `.gph` → `.gmi` conversion, TLS listener on configurable port)
 - [x] TLS support (native rustls, manual cert via `tls_cert`/`tls_key` in burrow.conf)
-- [ ] Custom domain support (paid tier)
+- [x] Custom domain support (aliases in burrow.conf, Host header resolution)
 - [x] `gph://` protocol handler (`burrow register` + `burrow open`)
 
 ## Infrastructure

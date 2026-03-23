@@ -1,6 +1,6 @@
 use axum::{
     extract::{ConnectInfo, Form, Path, Query, State},
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
@@ -20,6 +20,12 @@ use tracing_subscriber::EnvFilter;
 use burrow::config;
 mod render;
 
+fn extract_host(headers: &HeaderMap) -> Option<String> {
+    headers.get(header::HOST)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+}
+
 const MAX_FILE_SIZE: u64 = 65_536; // 64 KB
 const MAX_PATH_DEPTH: usize = 8;
 const GUESTBOOK_RATE_SECS: u64 = 30;
@@ -27,6 +33,7 @@ const FIREHOSE_PAGE_SIZE: usize = 20;
 
 #[derive(Clone)]
 struct AppState {
+    config: Arc<config::ServerConfig>,
     domain: Arc<String>,
     guestbook_limiter: Arc<Mutex<HashMap<IpAddr, Instant>>>,
     started_at: Instant,
@@ -360,6 +367,7 @@ async fn main() {
     let search_index = SearchIndex::build().await;
 
     let state = AppState {
+        config: Arc::new(cfg.clone()),
         domain: Arc::new(cfg.domain.clone()),
         guestbook_limiter: Arc::new(Mutex::new(HashMap::new())),
         started_at: Instant::now(),
@@ -388,6 +396,9 @@ async fn main() {
     println!("\n  \x1b[1m/\x1b[0m burrow v0.1.0\n");
     println!("  Tunneling...\n");
     println!("  Domain:         \x1b[36m{}\x1b[0m", cfg.domain);
+    if !cfg.aliases.is_empty() {
+        println!("  Aliases:        \x1b[36m{}\x1b[0m", cfg.aliases.join(", "));
+    }
 
     // Spawn Gemini listener if configured
     if cfg.has_gemini() {
@@ -443,10 +454,10 @@ async fn main() {
     }
 }
 
-async fn home(State(state): State<AppState>) -> Html<String> {
-    let domain = &state.domain;
+async fn home(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
-    Html(render::home_page(&burrows, domain))
+    Html(render::home_page(&burrows, &domain))
 }
 
 async fn robots_txt() -> impl IntoResponse {
@@ -496,8 +507,8 @@ struct PaginationParams {
     page: Option<usize>,
 }
 
-async fn firehose(State(state): State<AppState>, Query(params): Query<PaginationParams>) -> Html<String> {
-    let domain = &state.domain;
+async fn firehose(headers: HeaderMap, State(state): State<AppState>, Query(params): Query<PaginationParams>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let mut posts: Vec<(String, String, String, String)> = Vec::new();
 
@@ -533,7 +544,7 @@ async fn firehose(State(state): State<AppState>, Query(params): Query<Pagination
     let prev = if page > 1 { Some(page - 1) } else { None };
     let next = if page < total_pages { Some(page + 1) } else { None };
 
-    Html(render::firehose_page(&page_posts, &burrows, domain, prev, next))
+    Html(render::firehose_page(&page_posts, &burrows, &domain, prev, next))
 }
 
 async fn random_burrow() -> Response {
@@ -550,8 +561,8 @@ async fn random_burrow() -> Response {
     Redirect::to(&burrows[idx].path).into_response()
 }
 
-async fn discover(State(state): State<AppState>) -> Html<String> {
-    let domain = &state.domain;
+async fn discover(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
 
     // Gather all posts across all burrows
@@ -597,7 +608,7 @@ async fn discover(State(state): State<AppState>) -> Html<String> {
     let popular = count_bookmark_mentions(&burrows).await;
     let rings = load_all_rings().await;
 
-    Html(render::discover_page(&burrows, &latest, &popular, &rings, random_pick, domain))
+    Html(render::discover_page(&burrows, &latest, &popular, &rings, random_pick, &domain))
 }
 
 #[derive(Deserialize)]
@@ -605,8 +616,8 @@ struct SearchParams {
     q: Option<String>,
 }
 
-async fn search_handler(State(state): State<AppState>, Query(params): Query<SearchParams>) -> Html<String> {
-    let domain = &state.domain;
+async fn search_handler(headers: HeaderMap, State(state): State<AppState>, Query(params): Query<SearchParams>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let query = params.q.unwrap_or_default();
 
@@ -616,11 +627,11 @@ async fn search_handler(State(state): State<AppState>, Query(params): Query<Sear
         state.search_index.search(&query)
     };
 
-    Html(render::search_page(&query, &results, &burrows, domain))
+    Html(render::search_page(&query, &results, &burrows, &domain))
 }
 
-async fn search_index_json(State(state): State<AppState>) -> impl IntoResponse {
-    let domain = &state.domain;
+async fn search_index_json(headers: HeaderMap, State(state): State<AppState>) -> impl IntoResponse {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let mut json = String::from("{\"version\":1,\"server\":\"");
     json.push_str(&domain.replace('"', "\\\""));
     json.push_str("\",\"documents\":[");
@@ -642,11 +653,11 @@ async fn search_index_json(State(state): State<AppState>) -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "application/json; charset=utf-8")], json)
 }
 
-async fn rings_page(State(state): State<AppState>) -> Html<String> {
-    let domain = &state.domain;
+async fn rings_page(headers: HeaderMap, State(state): State<AppState>) -> Html<String> {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows = list_burrows().await;
     let rings = load_all_rings().await;
-    Html(render::rings_list_page(&rings, &burrows, domain))
+    Html(render::rings_list_page(&rings, &burrows, &domain))
 }
 
 async fn favicon_ico() -> impl IntoResponse {
@@ -662,8 +673,8 @@ async fn favicon_ico() -> impl IntoResponse {
     ([(header::CONTENT_TYPE, "image/x-icon")], ICO)
 }
 
-async fn serve_burrow(Path(path): Path<String>, State(state): State<AppState>) -> Response {
-    let domain = &state.domain;
+async fn serve_burrow(headers: HeaderMap, Path(path): Path<String>, State(state): State<AppState>) -> Response {
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
     let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
 
     // Virtual routes: feeds are generated, not real files
@@ -1813,12 +1824,13 @@ fn parse_guestbook(content: &str) -> Vec<GuestbookEntry> {
 }
 
 async fn post_guestbook(
+    headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Path(path): Path<String>,
     State(state): State<AppState>,
     Form(form): Form<GuestbookForm>,
 ) -> Response {
-    let domain = &state.domain;
+    let domain = state.config.resolve_domain(extract_host(&headers).as_deref());
 
     // Rate limit: one guestbook post per GUESTBOOK_RATE_SECS per IP
     {

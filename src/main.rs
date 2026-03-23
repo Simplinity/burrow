@@ -1107,8 +1107,18 @@ pub async fn list_burrows() -> Vec<BurrowEntry> {
         while let Ok(Some(entry)) = dirs.next_entry().await {
             let name = entry.file_name().to_string_lossy().to_string();
             if name.starts_with('~') && entry.path().is_dir() {
-                let desc = read_description(&entry.path()).await;
+                let mut desc = read_description(&entry.path()).await;
                 let count = count_dir_items(&entry.path()).await;
+
+                // Anniversary: find earliest post year
+                if let Some(year) = earliest_post_year(&entry.path()).await {
+                    if desc.is_empty() {
+                        desc = format!("Est. {}", year);
+                    } else {
+                        desc = format!("{} · Est. {}", desc, year);
+                    }
+                }
+
                 entries.push(BurrowEntry {
                     path: format!("/{}", name),
                     name: format!("{}/", name),
@@ -1121,6 +1131,31 @@ pub async fn list_burrows() -> Vec<BurrowEntry> {
     }
     entries.sort_by(|a, b| a.name.cmp(&b.name));
     entries
+}
+
+async fn earliest_post_year(burrow_dir: &path::Path) -> Option<String> {
+    let phlog_dir = burrow_dir.join("phlog");
+    if !fs::try_exists(&phlog_dir).await.unwrap_or(false) {
+        return None;
+    }
+    let mut earliest: Option<String> = None;
+    if let Ok(mut entries) = fs::read_dir(&phlog_dir).await {
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') || name.starts_with('_') || name.len() < 10 {
+                continue;
+            }
+            // Extract YYYY from YYYY-MM-DD-slug.txt
+            let candidate = &name[..4];
+            if candidate.chars().all(|c| c.is_ascii_digit()) {
+                match &earliest {
+                    Some(e) if candidate >= e.as_str() => {}
+                    _ => earliest = Some(candidate.to_string()),
+                }
+            }
+        }
+    }
+    earliest
 }
 
 async fn count_dir_items(dir: &path::Path) -> usize {

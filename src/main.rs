@@ -2644,7 +2644,7 @@ async fn gph_listener(state: AppState, bind_addr: String, tls_cert: String, tls_
 }
 
 async fn handle_gph_request<S: AsyncReadExt + AsyncWriteExt + Unpin>(stream: &mut S, state: &AppState) {
-    // Read request line: "gph://host/path\r\n" (max 1024 bytes)
+    // Read request line: "gph://host/path\r\n" or "gph://host/path?query\r\n" (max 1024 bytes)
     let mut buf = [0u8; 1026];
     let n = match stream.read(&mut buf).await {
         Ok(n) if n > 0 => n,
@@ -2654,18 +2654,26 @@ async fn handle_gph_request<S: AsyncReadExt + AsyncWriteExt + Unpin>(stream: &mu
     let request = String::from_utf8_lossy(&buf[..n]);
     let request = request.trim();
 
-    // Parse URL: "gph://host/path" → "/path"
-    let url_path = if let Some(rest) = request.strip_prefix("gph://") {
+    // Parse URL: "gph://host/path?query" → ("/path", Some("query"))
+    let url_part = if let Some(rest) = request.strip_prefix("gph://") {
         match rest.find('/') {
-            Some(pos) => &rest[pos..],
-            None => "/",
+            Some(pos) => rest[pos..].to_string(),
+            None => "/".to_string(),
         }
     } else {
         let _ = stream.write_all(b"=> error\nBad request: expected gph:// URL\n").await;
         return;
     };
 
-    let url_path = url_path.trim_end_matches('\r').trim_end_matches('\n');
+    let url_part = url_part.trim_end_matches('\r').trim_end_matches('\n').to_string();
+
+    // Split path and query: "/search?q=rust" → ("/search", Some("q=rust"))
+    let (url_path, query) = if let Some(pos) = url_part.find('?') {
+        (&url_part[..pos], Some(&url_part[pos+1..]))
+    } else {
+        (url_part.as_str(), None)
+    };
+
     let domain = &state.domain;
 
     // Increment page counter
@@ -2673,23 +2681,289 @@ async fn handle_gph_request<S: AsyncReadExt + AsyncWriteExt + Unpin>(stream: &mu
         state.page_counts.increment(burrow);
     }
 
-    let response = gph_serve_path(url_path, domain).await;
+    // Check for guestbook write: "gph://host/~user/guestbook?name=X&message=Y"
+    let response = if url_path.ends_with("/guestbook") && query.is_some() {
+        gph_guestbook_sign(url_path, query.unwrap()).await
+    } else {
+        gph_serve_path(url_path, query, domain, state).await
+    };
+
     let _ = stream.write_all(response.as_bytes()).await;
 }
 
-async fn gph_serve_path(url_path: &str, domain: &str) -> String {
+/// Sign a guestbook over gph:// protocol
+/// Query format: name=Name&message=Hello%20there
+async fn gph_guestbook_sign(url_path: &str, query: &str) -> String {
     let path = url_path.trim_start_matches('/');
+    let burrows_root = fs::canonicalize("burrows").await.unwrap_or_else(|_| path::PathBuf::from("burrows"));
+    let gph_path = path::PathBuf::from("burrows").join(path).with_extension("gph");
+
+    let canonical = match fs::canonicalize(&gph_path).await {
+        Ok(p) if p.starts_with(&burrows_root) => p,
+        _ => return "=> error\nGuestbook not found\n".to_string(),
+    };
+
+    if canonical.file_name().and_then(|f| f.to_str()) != Some("guestbook.gph") {
+        return "=> error\nNot a guestbook\n".to_string();
+    }
+
+    // Parse query string (simple URL-decode)
+    let mut name = String::new();
+    let mut message = String::new();
+    for param in query.split('&') {
+        if let Some(val) = param.strip_prefix("name=") {
+            name = urlish_decode(val);
+        } else if let Some(val) = param.strip_prefix("message=") {
+            message = urlish_decode(val);
+        }
+    }
+
+    let name = name.trim().to_string();
+    let message = message.trim().to_string();
+    if name.is_empty() || message.is_empty() {
+        return "=> error\nName and message are required\n".to_string();
+    }
+
+    let name: String = name.chars().take(MAX_GUESTBOOK_NAME_LEN).collect();
+    let message: String = message.chars().take(MAX_GUESTBOOK_MSG_LEN).collect();
+    let name = name.replace("---", "—");
+    let message = message.replace("---", "—");
+
+    // Check entry count
+    let existing = fs::read_to_string(&canonical).await.unwrap_or_default();
+    let entry_count = existing.matches("\n--- ").count() + if existing.starts_with("--- ") { 1 } else { 0 };
+    if entry_count >= MAX_GUESTBOOK_ENTRIES {
+        return "=> error\nGuestbook is full\n".to_string();
+    }
+
+    let date = Local::now().format("%Y-%m-%d %H:%M").to_string();
+    let entry = format!("\n--- {} · {}\n{}\n", name, date, message);
+    let mut content = existing;
+    content.push_str(&entry);
+    let _ = fs::write(&canonical, content).await;
+
+    "=> ok\nSigned the guestbook\n".to_string()
+}
+
+/// Simple URL decode: %20 → space, + → space
+fn urlish_decode(s: &str) -> String {
+    let s = s.replace('+', " ");
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '%' {
+            let hex: String = chars.by_ref().take(2).collect();
+            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                result.push(byte as char);
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
+async fn gph_serve_path(url_path: &str, query: Option<&str>, domain: &str, state: &AppState) -> String {
+    let path = url_path.trim_start_matches('/');
+
+    // ── Virtual routes ──────────────────────────────────────────
 
     // Home page
     if path.is_empty() {
         let burrows = list_burrows().await;
         let mut body = String::from("=> directory\n");
         body.push_str(&format!("# {} — burrows\n\n", domain));
+        body.push_str("?  Search   /search\n\n");
+        for b in &burrows {
+            body.push_str(&format!("/  {}   {}\n", b.name, b.description));
+        }
+        body.push_str(&format!("\n→  /discover   Discover\n"));
+        body.push_str(&format!("→  /firehose   Firehose\n"));
+        body.push_str(&format!("→  /rings   Rings\n"));
+        body.push_str(&format!("→  /random   Random burrow\n"));
+        return body;
+    }
+
+    // Search
+    if path == "search" {
+        let q = query.and_then(|q| {
+            q.split('&').find_map(|p| p.strip_prefix("q=").map(|v| urlish_decode(v)))
+        }).unwrap_or_default();
+
+        if q.is_empty() {
+            return "=> search\n? Search all burrows\n".to_string();
+        }
+
+        let results = state.search_index.read().unwrap().search(&q);
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# Search: {}\n", q));
+        body.push_str(&format!("@ results={}\n\n", results.len()));
+        for r in &results {
+            body.push_str(&format!("¶  {}   {}   {:.2}\n", r.path, r.title, r.score));
+        }
+        if results.is_empty() {
+            body.push_str("No results found.\n");
+        }
+        return body;
+    }
+
+    // Discover
+    if path == "discover" {
+        let burrows = list_burrows().await;
+        let mut body = String::from("=> directory\n");
+        body.push_str("# Discover\n\n");
+
+        // Latest posts
+        body.push_str("## Latest posts\n\n");
+        let mut posts: Vec<(String, String, String, String)> = Vec::new();
+        for burrow in &burrows {
+            let burrow_name = burrow.name.trim_end_matches('/');
+            let phlog_dir = path::PathBuf::from("burrows").join(burrow_name).join("phlog");
+            if let Ok(mut entries) = fs::read_dir(&phlog_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with('.') || name.starts_with('_') || !name.ends_with(".txt") { continue; }
+                    let title = fs::read_to_string(entry.path()).await.unwrap_or_default()
+                        .lines().next().unwrap_or("").trim_start_matches("# ").to_string();
+                    let slug = name.trim_end_matches(".txt");
+                    let date = if name.len() >= 10 { name[..10].to_string() } else { String::new() };
+                    posts.push((date, title, burrow_name.to_string(), format!("/{}/phlog/{}", burrow_name, slug)));
+                }
+            }
+        }
+        posts.sort_by(|a, b| b.0.cmp(&a.0));
+        for (date, title, author, url_path) in posts.iter().take(10) {
+            body.push_str(&format!("¶  {}   {} · {} · {}\n", url_path, title, author, date));
+        }
+
+        // Random burrow
+        body.push_str("\n## Random burrow\n\n");
+        body.push_str("→  /random   Surprise me\n");
+
+        // All burrows
+        body.push_str("\n## All burrows\n\n");
         for b in &burrows {
             body.push_str(&format!("/  {}   {}\n", b.name, b.description));
         }
         return body;
     }
+
+    // Firehose
+    if path == "firehose" {
+        let burrows = list_burrows().await;
+        let mut posts: Vec<(String, String, String, String)> = Vec::new();
+        for burrow in &burrows {
+            let burrow_name = burrow.name.trim_end_matches('/');
+            let phlog_dir = path::PathBuf::from("burrows").join(burrow_name).join("phlog");
+            if let Ok(mut entries) = fs::read_dir(&phlog_dir).await {
+                while let Ok(Some(entry)) = entries.next_entry().await {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with('.') || name.starts_with('_') || !name.ends_with(".txt") { continue; }
+                    let title = fs::read_to_string(entry.path()).await.unwrap_or_default()
+                        .lines().next().unwrap_or("").trim_start_matches("# ").to_string();
+                    let slug = name.trim_end_matches(".txt");
+                    let date = if name.len() >= 10 { name[..10].to_string() } else { String::new() };
+                    posts.push((date, title, burrow_name.to_string(), format!("/{}/phlog/{}", burrow_name, slug)));
+                }
+            }
+        }
+        posts.sort_by(|a, b| b.0.cmp(&a.0));
+
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# Firehose · {} posts\n\n", posts.len()));
+        for (date, title, author, url_path) in &posts {
+            body.push_str(&format!("¶  {}   {} · {} · {}\n", url_path, title, author, date));
+        }
+        return body;
+    }
+
+    // Rings
+    if path == "rings" {
+        let rings = load_all_rings().await;
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# Rings · {}\n\n", rings.len()));
+        for ring in &rings {
+            body.push_str(&format!("## {}\n", ring.title));
+            if !ring.description.is_empty() {
+                body.push_str(&format!("{}\n", ring.description));
+            }
+            for member in &ring.members {
+                body.push_str(&format!("  {}  {}\n", if member.starts_with('/') { "/" } else { "→" }, member));
+            }
+            body.push('\n');
+        }
+        return body;
+    }
+
+    // Servers
+    if path == "servers" {
+        let servers = load_servers().await;
+        let mut body = String::from("=> directory\n");
+        body.push_str("# Known Servers\n\n");
+        if servers.is_empty() {
+            body.push_str("No servers configured.\n");
+        }
+        for s in &servers {
+            body.push_str(&format!("→  {}   {}\n", s.url, s.description));
+        }
+        return body;
+    }
+
+    // Random
+    if path == "random" {
+        let burrows = list_burrows().await;
+        if burrows.is_empty() {
+            return "=> redirect\n/\n".to_string();
+        }
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .subsec_nanos() as usize;
+        let idx = nanos % burrows.len();
+        return format!("=> redirect\n{}\n", burrows[idx].path);
+    }
+
+    // ── Per-burrow virtual routes ───────────────────────────────
+
+    // Feed (text representation)
+    if path.ends_with("/feed") || path.ends_with("/feed.xml") {
+        let burrow_name = path.split('/').next().unwrap_or("");
+        let phlog_dir = path::PathBuf::from("burrows").join(burrow_name).join("phlog");
+        let mut posts: Vec<(String, String, String)> = Vec::new();
+        if let Ok(mut entries) = fs::read_dir(&phlog_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with('.') || name.starts_with('_') || !name.ends_with(".txt") { continue; }
+                let title = fs::read_to_string(entry.path()).await.unwrap_or_default()
+                    .lines().next().unwrap_or("").trim_start_matches("# ").to_string();
+                let slug = name.trim_end_matches(".txt");
+                let date = if name.len() >= 10 { name[..10].to_string() } else { String::new() };
+                posts.push((date, title, format!("/{}/phlog/{}", burrow_name, slug)));
+            }
+        }
+        posts.sort_by(|a, b| b.0.cmp(&a.0));
+        let mut body = String::from("=> directory\n");
+        body.push_str(&format!("# {} — feed\n\n", burrow_name));
+        for (date, title, url) in &posts {
+            body.push_str(&format!("¶  {}   {} · {}\n", url, title, date));
+        }
+        return body;
+    }
+
+    // Stats
+    if path.ends_with("/stats") {
+        let burrow_name = path.split('/').next().unwrap_or("");
+        if burrow_name.starts_with('~') {
+            let count = state.page_counts.get(burrow_name);
+            let month = state.page_counts.current_month();
+            let month_display = chrono::NaiveDate::parse_from_str(&format!("{}-01", month), "%Y-%m-%d")
+                .map(|d| d.format("%B %Y").to_string())
+                .unwrap_or(month);
+            return format!("=> text\n# {} stats\n\n{} page loads in {}\n", burrow_name, count, month_display);
+        }
+    }
+
+    // ── File serving ────────────────────────────────────────────
 
     // Draft visibility
     if path.split('/').any(|seg| seg.starts_with('_') || seg.starts_with('.')) {
@@ -2724,37 +2998,120 @@ async fn gph_serve_path(url_path: &str, domain: &str) -> String {
         // Directory listing
         let entries = list_directory(&canonical, &burrows_root).await;
         let title = read_title(&canonical).await;
+        let desc = read_description(&canonical).await;
         let display = title.as_deref().unwrap_or(path);
         let mut body = String::from("=> directory\n");
-        body.push_str(&format!("# {}\n\n", display));
+        body.push_str(&format!("# {}\n", display));
+        if !desc.is_empty() {
+            body.push_str(&format!("{}\n", desc));
+        }
+        body.push('\n');
         for e in &entries {
             let symbol = if e.entry_type == EntryType::Directory { "/" } else { "¶" };
             body.push_str(&format!("{}  {}   {}   {}\n", symbol, e.name, e.description, e.meta));
         }
+
+        // Neighbors on burrow root
+        let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+        if segments.len() == 1 && segments[0].starts_with('~') {
+            let all_rings = load_all_rings().await;
+            let neighbors = find_neighbors(&all_rings, segments[0]);
+            if !neighbors.is_empty() {
+                body.push_str("\n## Neighbors\n\n");
+                for (member, rings) in &neighbors {
+                    body.push_str(&format!("/  {}   {}\n", member.trim_start_matches('/'), rings.join(", ")));
+                }
+            }
+        }
         body
     } else {
-        // Text file — serve raw .gph content with type header and metadata
-        let content = read_file_checked(&canonical).await;
         let filename = canonical.file_name().unwrap().to_str().unwrap();
+
+        // Binary files: serve with ∅ type
+        if let Some(mime) = binary_mime_type(filename) {
+            let size = fs::metadata(&canonical).await.map(|m| m.len()).unwrap_or(0);
+            if size > MAX_BINARY_SIZE {
+                return "=> error\nFile too large\n".to_string();
+            }
+            if let Ok(data) = fs::read(&canonical).await {
+                // Binary: type header + mime info + raw bytes
+                // Note: for true binary, the client needs to handle this specially
+                let header = format!("=> binary\n@ mime={} size={}\n", mime, size);
+                let mut response = header.into_bytes();
+                response.extend_from_slice(&data);
+                // We can't return String for binary, but since our function returns String
+                // we'll return a base64 placeholder — the real binary serving needs
+                // the stream directly. For now, return metadata only.
+                return format!("=> binary\n@ mime={} size={} path=/{}\nBinary file. Fetch via HTTPS gateway.\n", mime, size, path);
+            }
+            return "=> error\nFailed to read file\n".to_string();
+        }
+
+        // Text file — serve raw .gph content with metadata
+        let content = read_file_checked(&canonical).await;
         let words = content.split_whitespace().count();
         let read_min = (words as f64 / 230.0).ceil() as usize;
-
         let modified = file_modified_date(&canonical).await.unwrap_or_default();
-
-        let doc_type = if filename == "guestbook.gph" {
-            "guestbook"
-        } else if filename == "bookmarks.gph" {
-            "bookmarks"
-        } else {
-            "text"
-        };
-
-        // Extract author from path
         let author = path.split('/').next().filter(|s| s.starts_with('~')).unwrap_or("");
+
+        let doc_type = if filename == "guestbook.gph" { "guestbook" }
+            else if filename == "bookmarks.gph" { "bookmarks" }
+            else { "text" };
 
         let mut body = format!("=> {}\n", doc_type);
         body.push_str(&format!("@ words={} read_min={} modified={} author={}\n", words, read_min, modified, author));
-        body.push_str(&content);
+
+        // Inspired-by
+        let (inspired, render_content) = render::extract_inspired_by(&content);
+        let has_inspired = inspired.is_some();
+        if let Some((ipath, iauthor)) = inspired {
+            body.push_str(&format!("@ inspired_by={} inspired_author={}\n", ipath, iauthor));
+        }
+
+        // Guest author
+        if let Some(guest) = render::extract_guest_author(filename) {
+            body.push_str(&format!("@ guest_author={}\n", guest));
+        }
+
+        // Series
+        if let Some(series) = detect_series(&canonical, path).await {
+            body.push_str(&format!("@ series_current={} series_total={}", series.current, series.total));
+            if let Some(prev) = &series.prev_path {
+                body.push_str(&format!(" series_prev={}", prev));
+            }
+            if let Some(next) = &series.next_path {
+                body.push_str(&format!(" series_next={}", next));
+            }
+            body.push('\n');
+        }
+
+        // Ring memberships
+        let burrow_name = path.split('/').next().unwrap_or("");
+        let all_rings = load_all_rings().await;
+        let rings = find_rings_for_burrow(&all_rings, burrow_name);
+        for ring in &rings {
+            let (prev, next) = ring_neighbors(&ring, burrow_name);
+            body.push_str(&format!("@ ring={}", ring.title));
+            if let Some(p) = &prev { body.push_str(&format!(" ring_prev={}", ring_member_href(p))); }
+            if let Some(n) = &next { body.push_str(&format!(" ring_next={}", ring_member_href(n))); }
+            body.push('\n');
+        }
+
+        // Mentions
+        let mut mentions = find_mentions_of(path).await;
+        let remote_pings = load_received_pings(&format!("/{}", path)).await;
+        mentions.extend(remote_pings);
+        for m in &mentions {
+            body.push_str(&format!("@ mention={} mention_title={} mention_burrow={}\n",
+                m.source_path, m.source_title, m.source_burrow));
+        }
+
+        // Content (use inspired-by stripped version if applicable)
+        if has_inspired {
+            body.push_str(&render_content);
+        } else {
+            body.push_str(&content);
+        }
         body
     }
 }

@@ -366,6 +366,27 @@ fn cmd_init(burrows_root: &Path, name: &str, server_url: &str) {
     )
     .unwrap();
 
+    // will.txt — digital testament
+    fs::write(
+        root.join("will.txt"),
+        format!(
+            "# Last Will and Testament of {}\n\n\
+            If this burrow falls silent, here are my wishes:\n\n\
+            ## Option 1: Archive\n\
+            Please submit this burrow to the Internet Archive (archive.org).\n\
+            The URL is: [your-server]/{}\n\n\
+            ## Option 2: Redirect\n\
+            Redirect to: [another URL where my words live]\n\n\
+            ## Option 3: Let it disappear\n\
+            Delete everything. Some things are meant to be ephemeral.\n\n\
+            ---\n\n\
+            Choose one. Delete the others. Or write your own instructions.\n\
+            This file is yours. It's the last thing you own here.\n",
+            name, name
+        ),
+    )
+    .unwrap();
+
     // Set as active burrow
     fs::write(burrows_root.join(".burrow-active"), &name).unwrap();
 
@@ -374,6 +395,7 @@ fn cmd_init(burrows_root: &Path, name: &str, server_url: &str) {
     println!();
     println!("  \x1b[36m{}\x1b[0m", name);
     println!("    about.txt");
+    println!("    will.txt");
     println!("    phlog/");
     println!();
     println!("  Your burrow is live at \x1b[36m{}/{}\x1b[0m", server_url, name);

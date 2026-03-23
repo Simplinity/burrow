@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use crate::{BookmarkEntry, BurrowEntry, EntryType, GalleryPiece, GuestbookEntry, Mention, Ring, SearchResult, ring_neighbors, ring_member_href};
 
 const CSS: &str = r#"
@@ -55,13 +56,26 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px}
 @media(max-width:700px){.sidebar{display:none}.main{padding:20px 16px}}
 "#;
 
+fn seasonal_accent() -> (&'static str, &'static str) {
+    let month = chrono::Local::now().month();
+    match month {
+        3..=5  => ("#2d8a4e", "#4bc87a"),  // spring — fresh green
+        6..=8  => ("#b8860b", "#d4a017"),  // summer — warm gold
+        9..=11 => ("#a0522d", "#c46d3d"),  // autumn — sienna brown
+        _      => ("#3a6ea5", "#5a9fd4"),  // winter — steel blue
+    }
+}
+
 fn head_with_accent(title: &str, addr: &str, domain: &str, accent: Option<&str>) -> String {
     let title = html_escape(title);
     let addr = html_escape(addr);
     let domain = html_escape(domain);
     let accent_css = match accent {
         Some(color) => format!("\n<style>:root{{--accent:{}}}@media(prefers-color-scheme:dark){{:root{{--accent:{}}}}}</style>", html_escape(color), html_escape(color)),
-        None => String::new(),
+        None => {
+            let (light, dark) = seasonal_accent();
+            format!("\n<style>:root{{--accent:{}}}@media(prefers-color-scheme:dark){{:root{{--accent:{}}}}}</style>", light, dark)
+        }
     };
     // Extract burrow name from addr for RSS feed link (e.g. "/~bruno/phlog" → "/~bruno/feed.xml")
     let rss_href = addr.split('/').nth(1)

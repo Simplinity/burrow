@@ -133,7 +133,11 @@ Classic Gopher (RFC 1436) is beautiful but incomplete for 2026:
 
 We also can't just use Gemini (the 2019 Gopher successor) because Gemini made an ideological choice to prohibit inline links, images, and any form of client-side interactivity. That's admirable purism. It's also why Gemini has ~5000 users and no growth trajectory.
 
-### Burrow Protocol (gph://)
+### Burrow Protocol (gph://) — *Implemented in v0.9.1*
+
+> **Status:** The gph:// protocol is now a working native listener in burrowd.
+> Configure with `gph_port = 1970` in `burrow.conf` (requires TLS).
+> The implementation matches the design below, with the addition of `@` metadata lines.
 
 Burrow extends Gopher's philosophy without breaking its soul. The protocol has three design principles:
 
@@ -149,36 +153,52 @@ A Burrow request is a single line:
 gph://phlogosphere.net/~bruno/projects/revend/\r\n
 ```
 
-The server responds with a typed document. The first line is always a type declaration:
+The server responds with a typed document. The first line is always a type declaration, followed by optional `@` metadata lines, then content:
 
 ```
 => directory
+@ path=/~bruno/projects/revend
 # ~bruno / projects / revend
 
 /  docs/             Documentation and specs
-/  src/              Source files  
+/  src/              Source files
 ¶  README.txt        2.1 KB  ·  Mar 14
 ¶  CHANGELOG.txt     840 B   ·  Mar 10
 →  https://revend.co Production site
 ?  Search this burrow
 ```
 
-That's a complete response. No headers, no status codes, no content negotiation, no cookies. The connection closes after the response.
+Text responses carry richer metadata:
+
+```
+=> text
+@ words=230 read_min=1 modified=2026-03-23 author=~bruno
+@ series_current=2 series_total=5 series_prev=/path series_next=/path
+@ ring=Deep Web Craft ring_prev=/~maya ring_next=/~river
+# My blog post title
+
+The actual content starts here...
+```
+
+That's a complete response. No headers, no status codes, no content negotiation, no cookies. The connection closes after the response. The `@` lines are structured metadata for the client — word count, reading time, series navigation, ring membership, mentions. The client decides what to render.
 
 #### Document types
 
-Burrow has exactly six document types:
+The implementation has nine response types:
 
 | Symbol | Type | Purpose |
 |---|---|---|
-| `/` | Directory | A list of items (files, subdirectories, links) |
-| `¶` | Text | A plain UTF-8 text document |
-| `→` | Link | A redirect to another Burrow address or external URL |
-| `?` | Search | An input prompt that submits a query |
-| `◊` | Gemtext | A Gemini-formatted document (for cross-protocol compatibility) |
-| `∅` | Binary | A raw file download (images, archives, etc.) |
+| `/` | `=> directory` | A list of items (files, subdirectories, links) |
+| `¶` | `=> text` | A plain UTF-8 text document |
+| | `=> guestbook` | Guestbook content |
+| | `=> bookmarks` | Bookmarks content |
+| `?` | `=> search` | Search prompt or results |
+| `→` | `=> redirect` | A redirect to another path |
+| `∅` | `=> binary` | Binary file metadata |
+| | `=> error` | Error message |
+| | `=> ok` | Success confirmation (e.g., guestbook signed) |
 
-That's it. Six types. Gopher had nine. HTTP has... don't ask.
+Nine types. Gopher had nine. We matched them by accident. HTTP has... don't ask.
 
 #### Burrow Markup (`.gph` files)
 
@@ -243,7 +263,7 @@ No export tools, no API, no "download your data" button that gives you a useless
 
 ### The HTTPS gateway
 
-Every Burrow server runs a parallel HTTPS gateway. The address `gph://phlogosphere.net/~bruno/about.txt` is automatically accessible at `https://phlogosphere.net/~bruno/about.txt`.
+Every Burrow server runs a parallel HTTPS gateway (and now a native gph:// TCP+TLS listener too). The address `gph://phlogosphere.net/~bruno/about.txt` is accessible at `https://phlogosphere.net/~bruno/about.txt` for browsers, and natively via the gph:// protocol on port 1970 for dedicated clients.
 
 The gateway renders Burrow content in a minimal HTML wrapper — Literata font, comfortable line-height, no navigation except breadcrumbs. It's a *reading view*, not an "app experience." It looks like a really clean blog.
 

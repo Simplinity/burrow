@@ -1,0 +1,95 @@
+# The gph:// Protocol
+
+burrowd now speaks its own language. Not metaphorically — literally. A native TCP+TLS protocol called gph:// that does what HTTP does in 47 headers, in three lines.
+
+---
+
+## What it is
+
+A wire protocol for Burrow content. One line request, typed response, connection closes. No headers. No status codes. No cookies. No content negotiation. The protocol equivalent of saying exactly what you mean and then hanging up.
+
+## Why it exists
+
+HTTP is a general-purpose protocol pretending it has no opinions. Gemini is a purist protocol that has opinions about everything. gph:// sits in between: structured enough that clients can do smart things, simple enough that you could implement a client in an afternoon.
+
+The server sends raw .gph content with structured metadata. The client renders it with its own typography, its own colors, its own opinions about whitespace. Separation of concerns, done right.
+
+---
+
+## The request
+
+One line over TLS:
+
+  gph://phlogosphere.net/~bruno/phlog/my-post\r\n
+
+That's it. The entire request specification.
+
+## The response
+
+Three parts: type, metadata, content.
+
+  => text
+  @ words=230 read_min=1 modified=2026-03-23 author=~bruno
+  @ ring=Deep Web Craft ring_prev=/~maya ring_next=/~river
+  # My post title
+
+  The actual content starts here...
+
+The first line declares the response type. Lines starting with @ carry metadata. Everything after is raw .gph markup.
+
+---
+
+## Response types
+
+Nine types, each declared on the first line:
+
+  => directory    Directory listing (symbol: /)
+  => text         Raw .gph text content (symbol: ¶)
+  => guestbook    Guestbook content
+  => bookmarks    Bookmarks content
+  => search       Search prompt or results (symbol: ?)
+  => redirect     Redirect to another path (symbol: →)
+  => binary       Binary file metadata (symbol: ∅)
+  => error        Error message
+  => ok           Success confirmation
+
+## The @ metadata lines
+
+Between the type header and content, @ lines carry structured data the client can use or ignore:
+
+  @ words=230 read_min=1 modified=2026-03-23 author=~bruno
+  @ inspired_by=/~maya/phlog/post inspired_author=~maya
+  @ series_current=2 series_total=5 series_prev=/path series_next=/path
+  @ ring=Deep Web Craft ring_prev=/~maya ring_next=/~river
+  @ mention=/~maya/phlog/response mention_title=Response mention_burrow=~maya
+
+Word count. Reading time. Series navigation. Ring membership. Mentions. Everything the HTTP version bakes into HTML, the gph:// version sends as parseable key=value pairs. A client that doesn't understand a key simply skips it.
+
+---
+
+## Guestbook signing
+
+Write support via query string:
+
+  gph://host/~user/guestbook?name=Alice&message=Hello%20there
+
+Same rate limits and input sanitization as the HTTP POST form. The server responds with => ok on success, => error on failure.
+
+## How it differs from HTTP and Gemini
+
+HTTP gives you rendered HTML. Gemini gives you Gemtext. gph:// gives you raw .gph content with structured metadata — the server computes, the client renders. Three protocols, same content directory, different trade-offs.
+
+## Configuration
+
+Three lines in burrow.conf (TLS required):
+
+  gph_port = 1970
+  tls_cert = /path/to/cert.pem
+  tls_key = /path/to/key.pem
+
+Every route that works over HTTP works over gph://. Same search. Same discover page. Same firehose. Same guestbooks. Different wire format. The server doesn't care which door you came through.
+
+---
+
+/~burrow/server/25-cli-extras   ← CLI Extras
+/~burrow/server/01-getting-started   Next → Getting Started

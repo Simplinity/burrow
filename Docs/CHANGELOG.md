@@ -32,6 +32,7 @@ The "everything you need, nothing you don't" release. 26 features. Zero JavaScri
 - **SIGHUP hot-reload** — reload config without restart (Unix convention)
 - **`.well-known/` support** — RFC 8615 well-known URIs served from `burrows/.well-known/`
 - **OPML export** — `/~user/subscriptions.opml` from bookmarks
+- **Native gph:// protocol** — TCP+TLS listener on configurable port (`gph_port = 1970`). Typed responses (`=> text`, `=> directory`, etc.) with structured `@` metadata lines (word count, reading time, series, rings, mentions). Same routes as HTTP. Guestbook signing via query string. One request, one response, connection closes. The protocol we kept saying wasn't real is now real.
 - **Digital testament** — `will.txt` generated on `burrow init` (instructions for burrow end-of-life)
 - **Page load statistics** — persisted to `burrows/.stats`, survives restarts
 - **Zero JavaScript CSS progress bar** — `animation-timeline: scroll()`, no JS fallback
@@ -46,7 +47,7 @@ The "everything you need, nothing you don't" release. 26 features. Zero JavaScri
 - **Writing streaks** — consecutive publishing days shown in `burrow status` (private, local only)
 
 ### Changed
-- Config options: 6 → 7 (server), added `compression`
+- Config options: 6 → 8 (server), added `compression` and `gph_port`
 - Tests: 38 → 42
 
 ---
@@ -275,7 +276,7 @@ First public release. The hole is open.
 | **Framework** | Axum 0.8, Tokio |
 | **CLI** | Clap 4 (derive) |
 | **Binaries** | `burrowd` (server), `burrow` (CLI) |
-| **Protocols** | HTTP, HTTPS (rustls), Gemini |
+| **Protocols** | HTTP, HTTPS (rustls), Gemini, gph:// |
 | **JavaScript** | 0 |
 | **License** | TBD |
 | **Repository** | [github.com/Simplinity/burrow](https://github.com/Simplinity/burrow) |

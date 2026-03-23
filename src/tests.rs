@@ -257,7 +257,7 @@ fn text_page_has_progress_bar() {
 fn text_page_uses_shared_head() {
     let html = render::text_page("~bruno/test.txt", "test.txt", "Hello", TEST_DOMAIN, None);
     assert!(html.contains("<!DOCTYPE html>"));
-    assert!(html.contains("burrow v0.9.1"));
+    assert!(html.contains("burrow v0.9.2"));
     assert!(html.contains("gph://"));
 }
 

@@ -36,7 +36,7 @@ Docs/          Project documentation
 
 ## Binaries
 
-- **`burrowd`** — HTTP/HTTPS/Gemini server. Reads `burrow.conf`, serves `burrows/` directory. Supports ETag caching, CSP headers, optional gzip/Brotli compression, and SIGHUP hot-reload.
+- **`burrowd`** — HTTP/HTTPS/Gemini/gph:// server. Reads `burrow.conf`, serves `burrows/` directory. Supports ETag caching, CSP headers, optional gzip/Brotli compression, and SIGHUP hot-reload.
 - **`burrow`** — CLI tool. Create burrows, write posts, manage guestbooks, lint/import content, export static sites, configure server.
 
 ## Key conventions

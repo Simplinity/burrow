@@ -113,7 +113,7 @@ fn head(title: &str, addr: &str, domain: &str) -> String {
 fn footer(domain: &str) -> String {
     let domain = html_escape(domain);
     format!(r#"<div class="statusbar">
-  <span>Local · TLS 1.3 · burrow v0.9.1</span>
+  <span>Local · TLS 1.3 · burrow v0.9.2</span>
   <span>{domain}</span>
 </div>
 <div class="banner">This page lives on Burrow. <a href="https://burrow.fyi">Claim your own hole →</a></div>

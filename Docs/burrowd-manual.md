@@ -204,9 +204,10 @@ aliases = blog.example.com, old-domain.net
 tls_cert = /etc/letsencrypt/live/myhole.example.com/fullchain.pem
 tls_key = /etc/letsencrypt/live/myhole.example.com/privkey.pem
 gemini_port = 1965
+gph_port = 1970
 ```
 
-We started with two keys. Then reality happened. We're not proud of seven, but we're not adding an eighth. (Narrator: they will.)
+We started with two keys. Then reality happened. We're not proud of eight, but we're not adding a ninth. (Narrator: they will.)
 
 ### Configuration Reference
 
@@ -218,6 +219,7 @@ We started with two keys. Then reality happened. We're not proud of seven, but w
 | `tls_cert` | *(none)* | Path to a PEM certificate chain. If both `tls_cert` and `tls_key` are set, burrowd serves HTTPS. No Caddy. No nginx. Just burrowd and a certificate. |
 | `tls_key` | *(none)* | Path to the private key. Keep this file readable only by the burrowd user, or you'll have bigger problems than typography. |
 | `gemini_port` | *(none)* | Port for the Gemini protocol listener (typically `1965`). Requires TLS to be configured. Your `.gph` files are automatically converted to Gemtext. Because one protocol is never enough. |
+| `gph_port` | *(none)* | Port for the native gph:// protocol listener (typically `1970`). Requires TLS to be configured. Raw `.gph` content with structured `@` metadata. Because three protocols were never enough either. |
 | `compression` | `false` | Enable gzip and Brotli compression. Text compresses spectacularly — a 64 KB `.txt` becomes ~8 KB over the wire. Automatic if the client accepts it. Set to `true` and forget about it. |
 
 If `burrow.conf` doesn't exist, burrowd defaults to `localhost:7070`, which is fine for local development and existential crises.
@@ -272,6 +274,8 @@ burrowd
 #   Domain:         myhole.example.com
 #   Aliases:        blog.example.com, old-domain.net
 #   HTTPS gateway:  http://0.0.0.0:7070
+#   Gemini:         gemini://0.0.0.0:1965
+#   gph://:         gph://0.0.0.0:1970
 #   LAN:            http://192.168.0.42:7070
 #   Burrow root:    ./burrows/
 #
@@ -496,9 +500,119 @@ The Gemini listener serves the same content: home page, directory listings, text
 
 The conversion is lossy by design: `.gph` headings become Gemini headings, links become Gemini links, blockquotes stay blockquotes. Code blocks and horizontal rules translate cleanly. What doesn't translate is the typography — Gemini clients bring their own fonts. That's fine. The words are what matter.
 
+## GPH:// NATIVE PROTOCOL
+
+As of v0.9.1, burrowd speaks its own native protocol: `gph://`. TCP+TLS. One request, one response, connection closes. No headers. No status codes. No cookies. No negotiation. The protocol equivalent of a firm handshake.
+
+If Gemini is Gopher's responsible younger sibling, gph:// is the one who read all the same books but formed its own opinions about metadata.
+
+### Configuration
+
+Add one line to `burrow.conf`:
+
+```conf
+gph_port = 1970
+tls_cert = /path/to/cert.pem
+tls_key = /path/to/key.pem
+```
+
+Requires TLS (same cert as HTTPS and Gemini — one cert, four protocols). Port 1970 because Gopher was born in 1991 and we wanted something that felt like an origin story.
+
+### Request Format
+
+A single line over TLS:
+
+```
+gph://host/path\r\n
+```
+
+That's the entire request specification. One line. No headers. No `Accept-Encoding`. No `User-Agent`. No `X-Forwarded-For-The-Love-Of-God-Stop-Adding-Headers`. Just: where do you want to go?
+
+### Response Format
+
+The server responds with a typed document, then closes the connection:
+
+```
+=> type
+@ metadata_key=value metadata_key2=value2
+[content]
+```
+
+The first line declares the document type. Optional `@` lines carry metadata. Everything after is raw content in `.gph` markup. The client renders it however it likes — the server doesn't care about your font choices.
+
+### Response Types
+
+| Symbol | Type | Purpose |
+|--------|------|---------|
+| `/` | `=> directory` | Directory listing |
+| `¶` | `=> text` | Raw .gph text content |
+| | `=> guestbook` | Guestbook content |
+| | `=> bookmarks` | Bookmarks content |
+| `?` | `=> search` | Search prompt or results |
+| `→` | `=> redirect` | Redirect to another path |
+| `∅` | `=> binary` | Binary file metadata |
+| | `=> error` | Error message |
+| | `=> ok` | Success confirmation |
+
+Nine types. Gopher had nine. HTTP has... we lost count somewhere around `418 I'm a teapot`.
+
+### Metadata Lines (`@` prefix)
+
+Text responses include `@` metadata lines between the type header and content. These are for the client — the server provides the data, the client decides what to show:
+
+```
+=> text
+@ words=230 read_min=1 modified=2026-03-23 author=~bruno
+@ inspired_by=/~maya/phlog/post inspired_author=~maya
+@ guest_author=~maya
+@ series_current=2 series_total=5 series_prev=/path series_next=/path
+@ ring=Deep Web Craft ring_prev=/~maya ring_next=/~river
+@ mention=/~maya/phlog/response mention_title=My Response mention_burrow=~maya
+# The actual content starts here...
+```
+
+Word count, reading time, modification date, series position, ring navigation, mentions — everything the HTTP version computes and bakes into HTML, the gph:// version sends as structured data. The client renders. The server computes. Separation of concerns, as the gods intended.
+
+### Routes
+
+Every route that works over HTTP works over gph://. All of them:
+
+```
+gph://host/                        Home page (directory of burrows)
+gph://host/~user/path              Any file or directory
+gph://host/search?q=rust           Full-text search
+gph://host/discover                Discovery page
+gph://host/firehose                Chronological post stream
+gph://host/rings                   Webring directory
+gph://host/servers                 Server directory
+gph://host/random                  Random burrow redirect
+gph://host/~user/feed              RSS feed
+gph://host/~user/stats             Reader count
+```
+
+Same content. Different wire format. The server doesn't care which door you came through.
+
+### Guestbook Signing
+
+Write support over gph:// uses query strings — because sometimes you want to leave a mark:
+
+```
+gph://host/~user/guestbook?name=Alice&message=Your+server+loads+faster+than+my+thoughts
+```
+
+Same rate limits, same truncation, same `---` injection prevention as the HTTP POST form. Just a different way to say hello.
+
+### Design Principles
+
+1. **One line in, complete document out, connection closes.** No keepalive. No streaming. No WebSockets. You ask, you receive, you leave.
+2. **No headers, no status codes, no cookies.** The response type line *is* the status. `=> error` means something went wrong. `=> redirect` means go somewhere else. No 301 vs 302 debate. No `Content-Type: application/json; charset=utf-8; boundary=unnecessary`.
+3. **The client renders.** The server sends raw content and metadata. Typography, layout, colors — that's the client's job. Your client, your aesthetics.
+4. **Metadata in `@` lines.** Structured, parseable, ignoreable. A client that doesn't understand `@ ring=...` can skip it. A client that does can render ring navigation. Progressive enhancement via structured text.
+5. **Content is raw `.gph` markup.** Same files, same format, different transport. Write once, serve over HTTP, Gemini, and gph://. Three protocols, one `phlog/` directory.
+
 ## THE ADDRESS BAR
 
-You may notice the address bar shows `gph://yourdomain.com/path`. This is an aesthetic choice referencing the Gopher protocol. It is not a real protocol (yet). Please do not file bug reports about this. We know.
+The address bar shows `gph://yourdomain.com/path` — and now it means something. The protocol is real. The clients are coming. The bug reports can stop.
 
 ## LIMITS
 
@@ -514,10 +628,10 @@ You may notice the address bar shows `gph://yourdomain.com/path`. This is an aes
 | JavaScript | 0 | CSS handles the progress bar. We are proud. Very proud. |
 | Frameworks | 0 | This is a feature, not a limitation |
 | Databases | 0 | The filesystem is the database. Always has been. |
-| Config options | 7 (server) + 5 (burrow) | We started with 2. Reality happened. |
+| Config options | 8 (server) + 5 (burrow) | We started with 2. Reality happened. We kept going. |
 | Tests | 42 | Covering render, escaping, XSS, series, dates, compression, ETags |
 | POST endpoints | 2 (guestbook + ping) | We agonized over the first. The second was easier. |
-| Protocols | 3 (HTTP, HTTPS, Gemini) | One protocol is never enough. Three might be too many. We don't care. |
+| Protocols | 4 (HTTP, HTTPS, Gemini, gph://) | One protocol is never enough. Four is a lifestyle choice. |
 
 ## TROUBLESHOOTING
 
@@ -698,11 +812,11 @@ If there's only one burrow, the CLI uses it automatically. If there are several 
 
 Burrow is three things:
 
-1. **A server** (`burrowd`) — you're reading its manual. It serves plaintext content over HTTP, HTTPS, and Gemini. It has opinions about typography and none about your JavaScript framework.
+1. **A server** (`burrowd`) — you're reading its manual. It serves plaintext content over HTTP, HTTPS, Gemini, and gph://. It has opinions about typography and none about your JavaScript framework.
 
 2. **A CLI** (`burrow`) — creates burrows, writes posts, manages guestbooks. The admin panel that ships with every Unix since 1971, slightly improved.
 
-3. **A protocol** (`gph://`) — the native Burrow wire format. Lighter than HTML, more structured than Gemini. Currently served through the HTTPS gateway; a native desktop client is coming.
+3. **A protocol** (`gph://`) — the native Burrow wire format. Lighter than HTML, more structured than Gemini. TCP+TLS with typed responses and `@` metadata lines. One request, one document, connection closes.
 
 Together, they form a publishing platform for people who think the internet should be *readable*. No algorithms, no notifications, no engagement metrics, no dark patterns. Text on a screen. Links between pages. People writing for other people.
 

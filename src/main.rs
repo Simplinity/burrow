@@ -510,7 +510,7 @@ async fn main() {
 
     let local_ip = local_ip_address().unwrap_or_else(|| "127.0.0.1".to_string());
 
-    println!("\n  \x1b[1m/\x1b[0m burrow v0.9.1\n");
+    println!("\n  \x1b[1m/\x1b[0m burrow v0.9.2\n");
     println!("  Tunneling...\n");
     println!("  Domain:         \x1b[36m{}\x1b[0m", cfg.domain);
     if !cfg.aliases.is_empty() {

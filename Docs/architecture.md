@@ -10,23 +10,24 @@ what each file does, why certain decisions were made, and where the boundaries a
 ## System overview
 
 ```
-                    ┌─────────────────────────────────────────────┐
-                    │                   User                      │
-                    └──┬──────────┬──────────┬───────────────────┘
-                       │          │          │
-                  CLI (burrow)  Browser   Gemini client
-                       │        (HTTP)    (TLS/Gemini)
-                    ┌──▼──┐  ┌──▼────┐  ┌──▼──────────┐
-                    │cli.rs│  │main.rs│  │gemini_listen │
-                    │      │  │ Axum  │  │ (in main.rs) │
-                    │Clap 4│  │ 0.8   │  │ tokio-rustls │
-                    └──┬───┘  └──┬────┘  └──┬──────────┘
-                       │         │          │
-                    ┌──▼─────────▼──────────▼─────────────────┐
+                    ┌──────────────────────────────────────────────────────┐
+                    │                        User                           │
+                    └──┬──────────┬──────────┬──────────────┬──────────────┘
+                       │          │          │              │
+                  CLI (burrow)  Browser   Gemini client  gph:// client
+                       │        (HTTP)    (TLS/Gemini)   (TLS/gph)
+                    ┌──▼──┐  ┌──▼────┐  ┌──▼──────────┐ ┌──▼──────────┐
+                    │cli.rs│  │main.rs│  │gemini_listen │ │gph_listener  │
+                    │      │  │ Axum  │  │ (in main.rs) │ │ (in main.rs) │
+                    │Clap 4│  │ 0.8   │  │ tokio-rustls │ │ tokio-rustls │
+                    └──┬───┘  └──┬────┘  └──┬──────────┘ └──┬──────────┘
+                       │         │          │               │
+                    ┌──▼─────────▼──────────▼───────────────▼─────┐
                     │            src/lib.rs                     │
                     │            └── config.rs                  │
                     │   ServerConfig { domain, aliases, port,   │
-                    │     tls_cert, tls_key, gemini_port }      │
+                    │     tls_cert, tls_key, gemini_port,       │
+                    │     gph_port }                             │
                     └────────────────────┬────────────────────┘
                                          │
                     ┌────────────────────▼────────────────────┐
@@ -44,8 +45,8 @@ what each file does, why certain decisions were made, and where the boundaries a
                               Filesystem = Database
 ```
 
-Two binaries, one shared library, one data directory. Three protocols (HTTP,
-HTTPS, Gemini). No database, no ORM, no message queue. Files in, pages out.
+Two binaries, one shared library, one data directory. Four protocols (HTTP,
+HTTPS, Gemini, gph://). No database, no ORM, no message queue. Files in, pages out.
 
 ---
 
@@ -53,8 +54,8 @@ HTTPS, Gemini). No database, no ORM, no message queue. Files in, pages out.
 
 ### `burrowd` (server) — `src/main.rs`
 
-The HTTP/HTTPS/Gemini server. Async via Tokio. Reads content from `burrows/`
-and renders it as HTML (or Gemtext for Gemini clients).
+The HTTP/HTTPS/Gemini/gph:// server. Async via Tokio. Reads content from `burrows/`
+and renders it as HTML, Gemtext (Gemini), or typed gph:// responses.
 
 **Startup sequence:**
 
@@ -82,6 +83,7 @@ main()
   │     ├── GET  /{*path}                 → serve_burrow()
   │     └── POST /{*path}                 → post_guestbook()
   ├── spawn(gemini_listener)              ← if TLS + gemini_port configured
+  ├── spawn(gph_listener)                ← if TLS + gph_port configured
   ├── spawn(send_outgoing_pings)          ← scans posts for gph:// links
   ├── spawn(signal_handler(SIGHUP))       ← hot-reload config on SIGHUP
   ├── TraceLayer (tower-http)             ← access logging
@@ -194,6 +196,7 @@ pub struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub gemini_port: Option<u16>,
+    pub gph_port: Option<u16>,   // default: none (typically 1970)
     pub compression: bool,       // default: false
 }
 ```
@@ -207,6 +210,7 @@ aliases = burrow.bruno.be, myburrow.com
 tls_cert = /path/to/cert.pem
 tls_key = /path/to/key.pem
 gemini_port = 1965
+gph_port = 1970
 compression = true
 ```
 
@@ -217,6 +221,7 @@ Key methods:
 - `is_known_host(host)` — returns true if host matches domain or any alias
 - `has_tls()` — true if both cert and key are configured
 - `has_gemini()` — true if gemini_port is set and TLS is configured
+- `has_gph()` — true if gph_port is set and TLS is configured
 
 ---
 
@@ -245,6 +250,7 @@ String concatenation with format macros.
 | `render_gph_to_gmi()` | Gemini | .gph → Gemtext conversion |
 | `home_gmi()` | Gemini `/` | Gemtext home page |
 | `directory_listing_gmi()` | Gemini dirs | Gemtext directory listing |
+| `gph_response()` | gph:// | Typed response with `@` metadata |
 
 **Shared components:**
 
@@ -304,7 +310,7 @@ and merge into their own index.
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `burrow.conf` | Project root | Server config (6 keys) |
+| `burrow.conf` | Project root | Server config (8 keys) |
 | `.burrow` | Any `~user/` dir or subdir | Per-directory config (description, accent, title, sort, pin) |
 | `.burrow-active` | `burrows/` | Tracks active burrow for CLI |
 | `guestbook.gph` | Any `~user/` dir | Triggers guestbook rendering + POST |
@@ -450,8 +456,9 @@ burrow v0.9.1
    in any editor, on any OS, for the next 50 years. The server adds presentation;
    it never owns the content.
 
-6. **Three protocols, one binary.** HTTP, HTTPS, and Gemini from the same process.
-   Same content, different wire formats.
+6. **Four protocols, one binary.** HTTP, HTTPS, Gemini, and gph:// from the same
+   process. Same content, different wire formats. The gph:// listener sends raw
+   `.gph` content with structured `@` metadata lines — the client renders.
 
 7. **Async I/O.** All filesystem reads use `tokio::fs`. No blocking the event loop.
 

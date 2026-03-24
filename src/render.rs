@@ -1,5 +1,5 @@
 use chrono::Datelike;
-use crate::{BookmarkEntry, BurrowEntry, EntryType, GalleryPiece, GuestbookEntry, Mention, Ring, SearchResult, ring_neighbors, ring_member_href};
+use crate::{BookmarkEntry, BurrowEntry, EntryType, GalleryPiece, GuestbookEntry, Mention, Ring, SearchResult, SeriesInfo, ring_neighbors, ring_member_href};
 
 const CSS: &str = r#"
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Literata:ital,wght@0,400;0,500;1,400&display=swap');
@@ -250,8 +250,6 @@ pub fn directory_page_with_neighbors(path: &str, title: Option<&str>, descriptio
 pub fn text_page(path: &str, filename: &str, content: &str, domain: &str, accent: Option<&str>) -> String {
     text_page_with_mentions(path, filename, content, &[], &[], "", &[], domain, accent, None, None)
 }
-
-use crate::SeriesInfo;
 
 pub fn text_page_with_mentions(path: &str, filename: &str, content: &str, mentions: &[Mention], rings: &[Ring], current_burrow: &str, burrows: &[BurrowEntry], domain: &str, accent: Option<&str>, series: Option<&SeriesInfo>, last_modified: Option<&str>) -> String {
     let crumbs = build_crumbs(path, domain);

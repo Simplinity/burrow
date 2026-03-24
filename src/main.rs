@@ -21,7 +21,8 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
 
 use burrow::config;
-mod render;
+use burrow::render;
+use burrow::{BurrowEntry, EntryType, GuestbookEntry, GalleryPiece, BookmarkEntry, Mention, Ring, SearchResult, SeriesInfo, ServerEntry, ring_neighbors, ring_member_href};
 
 fn extract_host(headers: &HeaderMap) -> Option<String> {
     headers.get(header::HOST)
@@ -424,17 +425,6 @@ struct SearchFilters {
     doc_type: Option<String>,
     fresh_days: Option<u32>,
     ring: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SearchResult {
-    pub path: String,
-    pub title: String,
-    pub author: String,
-    pub snippet: String,
-    pub score: f64,
-    pub date: String,
-    pub doc_type: String,
 }
 
 fn date_diff_days(date_str: &str, today_str: &str) -> i64 {
@@ -1062,14 +1052,6 @@ fn inject_slow_mode(html: String) -> String {
 
 // ── Series Detection ─────────────────────────────────────────
 
-#[derive(Debug, Clone)]
-pub struct SeriesInfo {
-    pub current: usize,
-    pub total: usize,
-    pub prev_path: Option<String>,
-    pub next_path: Option<String>,
-}
-
 /// Detect if a file is part of a series (part-01.txt, part-02.txt, etc.)
 /// Returns SeriesInfo if the file matches the pattern and siblings exist.
 async fn detect_series(canonical: &path::Path, url_path: &str) -> Option<SeriesInfo> {
@@ -1247,21 +1229,6 @@ async fn read_file_checked(path: &path::Path) -> String {
         );
     }
     fs::read_to_string(path).await.unwrap_or_default()
-}
-
-#[derive(Debug, Clone)]
-pub struct BurrowEntry {
-    pub name: String,
-    pub entry_type: EntryType,
-    pub description: String,
-    pub meta: String,
-    pub path: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum EntryType {
-    Directory,
-    Text,
 }
 
 pub async fn list_burrows() -> Vec<BurrowEntry> {
@@ -1733,11 +1700,6 @@ fn xml_escape(s: &str) -> String {
 
 // ── Rings ───────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
-pub struct ServerEntry {
-    pub url: String,
-    pub description: String,
-}
 
 async fn load_servers() -> Vec<ServerEntry> {
     let mut servers = Vec::new();
@@ -1757,15 +1719,6 @@ async fn load_servers() -> Vec<ServerEntry> {
         }
     }
     servers
-}
-
-#[derive(Clone)]
-pub struct Ring {
-    pub slug: String,
-    pub title: String,
-    pub description: String,
-    pub owner: String,
-    pub members: Vec<String>,
 }
 
 fn parse_ring_file(content: &str, slug: &str, owner: &str) -> Ring {
@@ -1893,39 +1846,7 @@ fn find_neighbors(rings: &[Ring], burrow_name: &str) -> Vec<(String, Vec<String>
     neighbors
 }
 
-/// For a given ring and current burrow, find the previous and next members.
-fn ring_neighbors(ring: &Ring, current_burrow: &str) -> (Option<String>, Option<String>) {
-    let local_path = format!("/{}", current_burrow);
-    let pos = ring.members.iter().position(|m| m == &local_path);
-    match pos {
-        Some(i) => {
-            let prev = if i == 0 { ring.members.last() } else { ring.members.get(i - 1) };
-            let next = if i == ring.members.len() - 1 { ring.members.first() } else { ring.members.get(i + 1) };
-            (prev.cloned(), next.cloned())
-        }
-        None => (None, None),
-    }
-}
-
-/// Convert a ring member path to an HTTP href.
-/// Local: /~user → /~user
-/// Remote: gph://host/~user → https://host/~user
-fn ring_member_href(member: &str) -> String {
-    if let Some(rest) = member.strip_prefix("gph://") {
-        format!("https://{}", rest)
-    } else {
-        member.to_string()
-    }
-}
-
 // ── Mentions ────────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub struct Mention {
-    pub source_path: String,
-    pub source_title: String,
-    pub source_burrow: String,
-}
 
 /// Find all posts across all burrows that contain an internal link to the given path.
 async fn find_mentions_of(target_path: &str) -> Vec<Mention> {
@@ -2174,16 +2095,6 @@ async fn load_received_pings(target_path: &str) -> Vec<Mention> {
 
 // ── Gallery ─────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
-pub struct GalleryPiece {
-    pub filename: String,
-    pub title: String,
-    pub preview: String,
-    pub url_path: String,
-    pub line_count: usize,
-    pub max_width: usize,
-}
-
 async fn load_gallery(dir: &path::Path) -> Vec<GalleryPiece> {
     let mut pieces = Vec::new();
     if let Ok(mut entries) = fs::read_dir(dir).await {
@@ -2230,13 +2141,6 @@ fn is_gallery_item(path: &str) -> bool {
 }
 
 // ── Bookmarks ───────────────────────────────────────────────────
-
-#[derive(Debug, Clone)]
-pub struct BookmarkEntry {
-    pub url: String,
-    pub description: String,
-    pub is_external: bool,
-}
 
 fn parse_bookmarks(content: &str) -> Vec<BookmarkEntry> {
     let mut bookmarks = Vec::new();
@@ -2301,13 +2205,6 @@ async fn count_bookmark_mentions(burrows: &[BurrowEntry]) -> Vec<(String, String
 const MAX_GUESTBOOK_ENTRIES: usize = 200;
 const MAX_GUESTBOOK_MSG_LEN: usize = 500;
 const MAX_GUESTBOOK_NAME_LEN: usize = 40;
-
-#[derive(Debug, Clone)]
-pub struct GuestbookEntry {
-    pub name: String,
-    pub date: String,
-    pub message: String,
-}
 
 #[derive(Deserialize)]
 struct GuestbookForm {
